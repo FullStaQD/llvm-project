@@ -2318,6 +2318,14 @@ def : Pat<(int_riscv_pause), (FENCE 0x1, 0x0)>;
 // Standard extensions
 //===----------------------------------------------------------------------===//
 
+def SVQ_ADD : RVInstR<0b0000000, 0b000, OPC_OP,
+                     (outs GPR:$rd),
+                     (ins GPR:$rs1, GPR:$rs2),
+                     "my.add", "$rd, $rs1, $rs2">;
+
+def : Pat<(add GPR:$rs1, GPR:$rs2),
+          (SVQ_ADD GPR:$rs1, GPR:$rs2)>;
+
 // Multiply and Division
 include "RISCVInstrInfoM.td"
 
