@@ -311,6 +311,9 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
   setLoadExtAction({ISD::EXTLOAD, ISD::SEXTLOAD, ISD::ZEXTLOAD}, MVT::i32,
                    MVT::i1, Promote);
 
+  // Custom instruction TODO: put it in the appropraite place
+  setOperationAction(ISD::INTRINSIC_WO_CHAIN, MVT::i32, Custom);
+
   // TODO: add all necessary setOperationAction calls.
   setOperationAction(ISD::DYNAMIC_STACKALLOC, XLenVT, Custom);
 
@@ -7754,6 +7757,7 @@ SDValue RISCVTargetLowering::LowerOperation(SDValue Op,
   default:
     reportFatalInternalError(
         "Unimplemented RISCVTargetLowering::LowerOperation Case");
+
   case ISD::PREFETCH:
     return LowerPREFETCH(Op, Subtarget, DAG);
   case ISD::ATOMIC_FENCE:
@@ -7878,8 +7882,16 @@ SDValue RISCVTargetLowering::LowerOperation(SDValue Op,
     }
     return SDValue();
   }
-  case ISD::INTRINSIC_WO_CHAIN:
-    return LowerINTRINSIC_WO_CHAIN(Op, DAG);
+  case ISD::INTRINSIC_WO_CHAIN: {
+    unsigned IntNo = cast<ConstantSDNode>(Op.getOperand(0))->getZExtValue();
+    
+    if (IntNo == Intrinsic::riscv_svq_add) {
+      SDValue Op1 = Op.getOperand(1);
+      SDValue Op2 = Op.getOperand(2);
+
+      return DAG.getNode(llvm::RISCVSVQ::SVQ_ADD, SDLoc(Op), MVT::i32, Op1, Op2);
+    }
+  }
   case ISD::INTRINSIC_W_CHAIN:
     return LowerINTRINSIC_W_CHAIN(Op, DAG);
   case ISD::INTRINSIC_VOID:

@@ -662,6 +662,7 @@ struct RISCVVIntrinsicInfo {
   }
 };
 
+
 using namespace RISCV;
 
 #define GET_RISCVVIntrinsicsTable_DECL
@@ -670,6 +671,12 @@ using namespace RISCV;
 
 } // end namespace RISCVVIntrinsicsTable
 
+namespace RISCVSVQ {
+enum {
+  FIRST_NUMBER = ISD::BUILTIN_OP_END,
+  SVQ_ADD
+};
+}
 } // end namespace llvm
 
 #endif
