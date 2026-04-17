@@ -489,7 +489,7 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
     setOperationAction(ISD::SSHLSAT, MVT::i32, Legal);
   }
 
-  // Custom instruction TODO: put it in the appropraite place
+  // Custom instruction TODO: put it in the correct place
   if (Subtarget.hasStdExtSVQ()) {
     setOperationAction(ISD::INTRINSIC_WO_CHAIN, MVT::i32, Custom);
   }
