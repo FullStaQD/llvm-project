@@ -12,6 +12,7 @@ def SVQ_ADD_NODE : SDNode<
   >
 >;
 
+let Predicates = [HasStdExtSVQ] in {
 def SVQ_ADD : RVInstR<
     0b0001000,          // funct7
     0b111,              // funct3
@@ -19,13 +20,10 @@ def SVQ_ADD : RVInstR<
     (outs GPR:$rd),
     (ins GPR:$rs1, GPR:$rs2),
     "svq.add", 
-    "$rd, $rs1, $rs2"> {
-      let Predicates = [HasStdExtSVQ];
-}
+    "$rd, $rs1, $rs2">;
 
 def : Pat<
   (SVQ_ADD_NODE i32:$rs1, i32:$rs2),
   (SVQ_ADD GPR:$rs1, GPR:$rs2)
-> {
-  let Predicates = [HasStdExtSVQ];
+>;
 }
