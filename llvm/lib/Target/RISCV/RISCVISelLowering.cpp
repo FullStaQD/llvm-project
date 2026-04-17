@@ -311,9 +311,6 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
   setLoadExtAction({ISD::EXTLOAD, ISD::SEXTLOAD, ISD::ZEXTLOAD}, MVT::i32,
                    MVT::i1, Promote);
 
-  // Custom instruction TODO: put it in the appropraite place
-  setOperationAction(ISD::INTRINSIC_WO_CHAIN, MVT::i32, Custom);
-
   // TODO: add all necessary setOperationAction calls.
   setOperationAction(ISD::DYNAMIC_STACKALLOC, XLenVT, Custom);
 
@@ -490,6 +487,11 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
     // FIXME: Support i32 on RV64+P by inserting into a v2i32 vector, doing
     // pssha.w and extracting.
     setOperationAction(ISD::SSHLSAT, MVT::i32, Legal);
+  }
+
+  // Custom instruction TODO: put it in the appropraite place
+  if (Subtarget.hasStdExtSVQ()) {
+    setOperationAction(ISD::INTRINSIC_WO_CHAIN, MVT::i32, Custom);
   }
 
   static const unsigned FPLegalNodeTypes[] = {
