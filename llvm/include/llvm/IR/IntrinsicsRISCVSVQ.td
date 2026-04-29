@@ -22,4 +22,9 @@ let TargetPrefix = "riscv" in {
         Intrinsic<[llvm_i32_ty], 
                   [llvm_i32_ty, llvm_i32_ty],
                   [IntrNoMem]>;
+    
+    def int_riscv_svq_mul : 
+        Intrinsic<[llvm_i32_ty],
+                  [llvm_i32_ty, llvm_i32_ty],
+                  [IntrNoMem]>;
 }

@@ -22,8 +22,22 @@ def SVQ_ADD : RVInstR<
     "svq.add", 
     "$rd, $rs1, $rs2">;
 
+def SVQ_MUL : RVInstR<
+    0b0001000,          // funct7
+    0b101,              // funct3
+    OPC_OP,             // opcode (standard R-type)
+    (outs GPR:$rd),
+    (ins GPR:$rs1, GPR:$rs2),
+    "svq.mul", 
+    "$rd, $rs1, $rs2">;
+
 def : Pat<
   (SVQ_ADD_NODE i32:$rs1, i32:$rs2),
   (SVQ_ADD GPR:$rs1, GPR:$rs2)
+>;
+
+def : Pat<
+  (int_riscv_svq_mul i32:$rs1, i32:$rs2),
+  (SVQ_MUL GPR:$rs1, GPR:$rs2)
 >;
 }
