@@ -16,7 +16,12 @@
 // Quantum Intermediate Representation (QIR) intrinsics for RISCV
 
 let TargetPrefix = "riscv" in {
-// Custom add instruction. It will translate to: @llvm.riscv.svq.add()
+// Custom QIR gate instruction instruction. It will translate to: @llvm.riscv.qir.h()
+
+    def int_riscv_qir_initialize :
+        Intrinsic<[],
+                  [llvm_ptr_ty],
+                  [IntrNoMem]>;
     def int_riscv_qir_h:
         Intrinsic<[],
                   [llvm_ptr_ty],
