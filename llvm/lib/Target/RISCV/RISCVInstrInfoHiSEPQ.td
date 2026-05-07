@@ -80,7 +80,7 @@ def QV_X : QVSingle<QV_X_FUNCT6, OPIQVSingle, "qv.x">,
 
 //===----------------------------------------------------------------------===//
 //
-// QV.SINGLE - Pseudos
+// QV.SINGLE - Pseudos and patterns
 //
 //===----------------------------------------------------------------------===//
 
@@ -98,37 +98,27 @@ class VPseudoQVSingleNoMask<VReg vs1_rc, DAGOperand rs2_rc, LMULInfo m> :
   let mayStore = 0;
 }
 
-// Pseudos for LMUL=1, Unmasked
-let BaseInstr = QV_H in 
-def Pseudo_QV_H_M1 : VPseudoQVSingleNoMask<VR, GPR, V_M1>;
-let BaseInstr = QV_X in 
-def Pseudo_QV_X_M1 : VPseudoQVSingleNoMask<VR, GPR, V_M1>;
+// Defines the Pseudo and the Pattern for a single-qubit gate.
+multiclass QVSingleGate<Instruction BaseInst, Intrinsic Intrin> {
+  
+  // Pseudo (creates public pseudo with name: NAME # "_M1", e.g. Pseudo_QV_H_M1)
+  def _M1 : VPseudoQVSingleNoMask<VR, GPR, V_M1> {
+    let BaseInstr = BaseInst;
+  }
 
-//===----------------------------------------------------------------------===//
-//
-// Patterns
-//
-//===----------------------------------------------------------------------===//
+  // Pattern (anonymous)
+  def : Pat<(Intrin (nxv8i8 VR:$vs1), (XLenVT GPR:$rs2), (XLenVT imm:$block), VLOpFrag),
+            (!cast<Instruction>(NAME # "_M1") // NAME = e.g. "Pseudo_QV_H" from defm below
+                     VR:$vs1, 
+                     GPR:$rs2, 
+                     imm:$block, 
+                     1,      // $vm (unmasked)
+                     GPR:$vl, 
+                     3,      // SEW
+                     0       // policy
+            )>;
+}
 
-def : Pat<(int_riscv_qv_h (nxv8i8 VR:$vs1), (XLenVT GPR:$rs2), (XLenVT imm:$block), VLOpFrag),
-          (Pseudo_QV_H_M1 
-                   VR:$vs1, 
-                   GPR:$rs2, 
-                   imm:$block,
-                   1,      // $vm (unmasked)
-                   GPR:$vl, 
-                   3,      // SEW
-                   0       // policy
-          )>;
-
-// FIXME: avoid repetition (probably via defm)
-def : Pat<(int_riscv_qv_x (nxv8i8 VR:$vs1), (XLenVT GPR:$rs2), (XLenVT imm:$block), VLOpFrag),
-          (Pseudo_QV_X_M1 
-                   VR:$vs1, 
-                   GPR:$rs2, 
-                   imm:$block,
-                   1,      // $vm (unmasked)
-                   GPR:$vl, 
-                   3,      // SEW
-                   0       // policy
-          )>;
+// Instantiate above multiclass
+defm Pseudo_QV_H : QVSingleGate<QV_H, int_riscv_qv_h>;
+defm Pseudo_QV_X : QVSingleGate<QV_X, int_riscv_qv_x>;
