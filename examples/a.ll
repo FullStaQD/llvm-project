@@ -27,11 +27,20 @@ declare <vscale x 8 x i8> @llvm.riscv.vadd.nxv8i8.i8.i32(
     i32 %vl
 )
 
+; my_vadd.vx
 declare <vscale x 8 x i8> @llvm.riscv.my.vadd.nxv8i8.i32.i32(
     <vscale x 8 x i8> %passthru,
     <vscale x 8 x i8> %op1,
     i32 %op2,
     i32 %vl
+)
+
+; qv.h vs1, rs2, Block_imm
+declare void @llvm.riscv.qv.h.nxv8i8.i32.i32(
+    <vscale x 8 x i8> %tgt,      ; vs1
+    i32 %tag,                    ; rs2
+    i32 %block_imm,              ; Block_imm (will be constrained to 5 bits)
+    i32 %vl                      ; vl (for vsetvli magic)
 )
 
 ; Your custom qv.h intrinsic: returns vector, takes (input_vector, tag, immediate, vector_length)
@@ -57,6 +66,8 @@ entry:
     ;%v4 = call <vscale x 8 x i8> @llvm.riscv.my.vadd.nxv8i8.i8.i32(<vscale x 8 x i8> poison, <vscale x 8 x i8> %v3, i32 15, i32 3)
 
     %v2 = call <vscale x 8 x i8> @llvm.riscv.my.vadd.nxv8i8.i8.i32(<vscale x 8 x i8> poison, <vscale x 8 x i8> %v1, i32 15, i32 2)
+
+    call void @llvm.riscv.qv.h.nxv8i8.i32.i32(<vscale x 8 x i8> %v1, i32 85, i32 12, i32 3)
 
     ; FIXME: this makes sure vle is not optimized away
     ;call void @llvm.riscv.vse.nxv1i8(<vscale x 1 x i8> %v1, ptr %s0, i32 3)

@@ -1999,10 +1999,11 @@ let TargetPrefix = "riscv" in {
 }
 
 let TargetPrefix = "riscv" in {
-  def int_riscv_qv_h : Intrinsic<[], 
-                                [llvm_anyvector_ty, // vs1 (tgt)
-                                 llvm_i32_ty,       // rs2 (tag)
-                                 llvm_i32_ty,       // Block_imm, FIXME: problem that it is just 5 bits?
-                                 llvm_i32_ty],      // VL
-                                [IntrHasSideEffects]>;
+  // qv.h vs1, rs2, Block_imm
+  def int_riscv_qv_h : Intrinsic<[], // void return type
+                         [llvm_anyvector_ty, // vs1 (tgt)
+                          llvm_anyint_ty,    // rs2 (tag)
+                          llvm_anyint_ty,    // Block_imm (wait time)
+                          llvm_anyint_ty],   // vl
+                         [IntrHasSideEffects, IntrNoMem]>;
 }
