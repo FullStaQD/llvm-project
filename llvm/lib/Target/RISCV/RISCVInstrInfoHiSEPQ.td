@@ -71,12 +71,11 @@ class QVSingle<bits<6> funct6, RISCVVFormat opv, string opcodestr>
         (ins VR:$vs1, GPR:$rs2, uimm5:$block_imm, VMaskOp:$vm),
         opcodestr, 
         // "$vs1, $rs2$vm, $block_imm" // *with* mask
-        "$vs1, $rs2, $block_imm">;
+        "$vs1, $rs2, $block_imm">,
+      SchedBinaryMC<"WriteVIALUX", "ReadVIALUV", "ReadVIALUX"> ;
 
-def QV_H : QVSingle<QV_H_FUNCT6, OPIQVSingle, "qv.h">, 
-           SchedBinaryMC<"WriteVIALUX", "ReadVIALUV", "ReadVIALUX">;
-def QV_X : QVSingle<QV_X_FUNCT6, OPIQVSingle, "qv.x">, 
-           SchedBinaryMC<"WriteVIALUX", "ReadVIALUV", "ReadVIALUX">;
+def QV_H : QVSingle<QV_H_FUNCT6, OPIQVSingle, "qv.h">;
+def QV_X : QVSingle<QV_X_FUNCT6, OPIQVSingle, "qv.x">;
 
 //===----------------------------------------------------------------------===//
 //
