@@ -7884,20 +7884,8 @@ SDValue RISCVTargetLowering::LowerOperation(SDValue Op,
     }
     return SDValue();
   }
-  case ISD::INTRINSIC_WO_CHAIN: {
-    unsigned IntNo = cast<ConstantSDNode>(Op.getOperand(0))->getZExtValue();
-    
-    switch (IntNo) {
-      case Intrinsic::riscv_svq_add: {
-      SDValue Op1 = Op.getOperand(1);
-      SDValue Op2 = Op.getOperand(2);
-
-      return DAG.getNode(llvm::RISCVSVQ::SVQ_ADD, SDLoc(Op), MVT::i32, Op1, Op2);
-    }
-      default:
-        return SDValue();
-  }
-}
+  case ISD::INTRINSIC_WO_CHAIN:
+    return LowerINTRINSIC_WO_CHAIN(Op, DAG);
   case ISD::INTRINSIC_W_CHAIN:
     return LowerINTRINSIC_W_CHAIN(Op, DAG);
   case ISD::INTRINSIC_VOID:
@@ -11516,6 +11504,12 @@ SDValue RISCVTargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
 
     return NewNode;
   }
+  case Intrinsic::riscv_svq_add: {
+      SDValue Op1 = Op.getOperand(1);
+      SDValue Op2 = Op.getOperand(2);
+
+      return DAG.getNode(llvm::RISCVSVQ::SVQ_ADD, SDLoc(Op), MVT::i32, Op1, Op2);
+    }
   }
 
   return lowerVectorIntrinsicScalars(Op, DAG, Subtarget);
