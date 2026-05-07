@@ -1,3 +1,9 @@
+//===----------------------------------------------------------------------===//
+//
+// my_vadd.vx (just as a simple demo)
+//
+//===----------------------------------------------------------------------===//
+
 defvar MY_VADD_FUNCT6 = 0b111111;
 
 def MY_VADD_VX : VALUVX<MY_VADD_FUNCT6, OPIVX, "my_vadd.vx">, 
@@ -19,7 +25,12 @@ def : Pat<(nxv8i8 (int_riscv_my_vadd
                    GPR:$vl,            // This $vl comes from the VLOpFrag above
                    3, 
                    0)>;
-//////////////////////////////////////////////////////////////////////////////////
+
+//===----------------------------------------------------------------------===//
+//
+// QV.SINGLE
+//
+//===----------------------------------------------------------------------===//
 
 defvar QV_H_FUNCT6 = 0b111110;
 def OPIQVSingle : RISCVVFormat<0b000>;
@@ -91,44 +102,3 @@ def : Pat<(int_riscv_qv_h (nxv8i8 VR:$vs1), (XLenVT GPR:$rs2), (XLenVT imm:$bloc
                    3,      // SEW
                    0       // policy
           )>;
-
-//////////////////////////////////////////////////////////////////////////////////
-
-
-// Define the Block_imm as a 5-bit unsigned immediate
-// def my_uimm5 : Operand<XLenVT>, ImmLeaf<XLenVT, [{ return isUInt<5>(Imm); }]> {
-//   let ParserMatchClass = UImmAsmOperand<5>;
-// }
-
-// Basic QV.SINGLE format
-// class QVSingleInst<bits<7> gateId, dag outs, dag ins, string opstr, string argstr>
-//     : RVInst<outs, ins, opstr, argstr, [], InstFormatR> {
-//   bits<5> rs2;
-//   bits<5> vs1;
-//   bits<5> block;
-
-//   let Inst{31-25} = gateId;
-//   let Inst{24-20} = rs2;
-//   let Inst{19-15} = vs1;
-//   let Inst{14-12} = 0b000; // S-type
-//   let Inst{11-7}  = block;
-//   let Inst{6-0}   = 0b1010111; // OP-V
-
-//   let Uses = [VL, VTYPE]; // The vadd insight!
-// }
-
-// The qv.h instruction (GateID=0x01)
-// vs1 = tgt (vector), rs2 = tag (GPR), rd = Block_imm
-// def QV_H : QVSingleInst<0x01, (outs), (ins VR:$vs1, GPR:$rs2, my_uimm5:$block),
-//                        "qv.h", "$vs1, $rs2, $block">;
-
-// We inherit from RISCVVPseudo to get automatic VSETVLI insertion support
-// def PseudoQV_H : Pseudo<(outs), (ins VR:$vs1, GPR:$rs2, my_uimm5:$block, GPR:$vl), []>,
-//                  RISCVVPseudo {
-//   let VLMul = 0;      // Default to m1
-//   let HasVLOp = 1;    // Tells the backend the last GPR is actually the VL
-//   let hasSideEffects = 1;
-// }
-
-// def : Pat<(int_riscv_qv_h (nxv1i8 VR:$vs1), GPR:$rs2, (i32 timm:$block), GPR:$vl),
-//           (PseudoQV_H VR:$vs1, GPR:$rs2, my_uimm5:$block, GPR:$vl)>;
