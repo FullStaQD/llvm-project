@@ -50,7 +50,7 @@ class RVInstQVSingle<bits<6> funct6, RISCVVFormat opv, dag outs, dag ins,
   let RVVConstraint = VMConstraint;
 }
 
-class VALUQVSingle<bits<6> funct6, RISCVVFormat opv, string opcodestr>
+class QVSingle<bits<6> funct6, RISCVVFormat opv, string opcodestr>
     : RVInstQVSingle<
         funct6, 
         opv, 
@@ -60,7 +60,7 @@ class VALUQVSingle<bits<6> funct6, RISCVVFormat opv, string opcodestr>
         // "$vs1, $rs2$vm, $block_imm" // *with* mask
         "$vs1, $rs2, $block_imm">;
 
-def QV_H : VALUQVSingle<QV_H_FUNCT6, OPIQVSingle, "qv.h">, 
+def QV_H : QVSingle<QV_H_FUNCT6, OPIQVSingle, "qv.h">, 
                  SchedBinaryMC<"WriteVIALUX", "ReadVIALUV", "ReadVIALUX">;
 
 // FIXME: do not hardcode BaseInstr?
