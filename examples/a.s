@@ -14,10 +14,12 @@ _start:                                 # @_start
 	sw	a0, 0(a1)
 	vsetivli	zero, 3, e8, m1, ta, ma
 	vle8.v	v8, (a1)
-	my_vadd.vx	v8, v8, zero
 	li	a0, 85
+	my_vadd.vx	v8, v8, zero
 	vsetivli	zero, 2, e8, m1, ta, ma
 	qv.h	v8, a0, 12
+	vsetivli	zero, 3, e8, m1, ta, ma
+	qv.x	v8, a0, 12
 .LBB0_1:                                # %loop
                                         # =>This Inner Loop Header: Depth=1
 	j	.LBB0_1

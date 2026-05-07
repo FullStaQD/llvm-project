@@ -1,6 +1,6 @@
 //===----------------------------------------------------------------------===//
 //
-// my_vadd.vx (just as a simple demo)
+// my_vadd.vx (just as a simple demo, unrelated to HiSEP-Q)
 //
 //===----------------------------------------------------------------------===//
 
@@ -28,11 +28,13 @@ def : Pat<(nxv8i8 (int_riscv_my_vadd
 
 //===----------------------------------------------------------------------===//
 //
-// QV.SINGLE
+// QV.SINGLE - Instruction
 //
 //===----------------------------------------------------------------------===//
 
 defvar QV_H_FUNCT6 = 0b111110;
+defvar QV_X_FUNCT6 = 0b111101;
+
 def OPIQVSingle : RISCVVFormat<0b000>;
 
 class RVInstQVSingle<bits<6> funct6, RISCVVFormat opv, dag outs, dag ins,
@@ -73,8 +75,15 @@ class QVSingle<bits<6> funct6, RISCVVFormat opv, string opcodestr>
 
 def QV_H : QVSingle<QV_H_FUNCT6, OPIQVSingle, "qv.h">, 
            SchedBinaryMC<"WriteVIALUX", "ReadVIALUV", "ReadVIALUX">;
+def QV_X : QVSingle<QV_X_FUNCT6, OPIQVSingle, "qv.x">, 
+           SchedBinaryMC<"WriteVIALUX", "ReadVIALUV", "ReadVIALUX">;
 
-// FIXME: do not hardcode BaseInstr?
+//===----------------------------------------------------------------------===//
+//
+// QV.SINGLE - Pseudos
+//
+//===----------------------------------------------------------------------===//
+
 class VPseudoQVSingleNoMask<VReg vs1_rc, DAGOperand rs2_rc, LMULInfo m> :
   RISCVVPseudo<(outs), 
                (ins vs1_rc:$vs1, rs2_rc:$rs2, uimm5:$block, uimm5:$vm, GPR:$vl, uimm5:$sew, uimm5:$policy)> {
@@ -82,18 +91,39 @@ class VPseudoQVSingleNoMask<VReg vs1_rc, DAGOperand rs2_rc, LMULInfo m> :
   let HasVLOp = 1;
   let HasSEWOp = 1;
   let HasVecPolicyOp = 1;
-  let BaseInstr = QV_H;
+  // let BaseInstr = ...; // set later with QV_H, QV_X etc
 
   let hasSideEffects = 1; 
   let mayLoad = 0;
   let mayStore = 0;
 }
 
-// We use V_M1 to automatically get the 'VR' register class
+// Pseudos for LMUL=1, Unmasked
+let BaseInstr = QV_H in 
 def Pseudo_QV_H_M1 : VPseudoQVSingleNoMask<VR, GPR, V_M1>;
+let BaseInstr = QV_X in 
+def Pseudo_QV_X_M1 : VPseudoQVSingleNoMask<VR, GPR, V_M1>;
+
+//===----------------------------------------------------------------------===//
+//
+// Patterns
+//
+//===----------------------------------------------------------------------===//
 
 def : Pat<(int_riscv_qv_h (nxv8i8 VR:$vs1), (XLenVT GPR:$rs2), (XLenVT imm:$block), VLOpFrag),
           (Pseudo_QV_H_M1 
+                   VR:$vs1, 
+                   GPR:$rs2, 
+                   imm:$block,
+                   1,      // $vm (unmasked)
+                   GPR:$vl, 
+                   3,      // SEW
+                   0       // policy
+          )>;
+
+// FIXME: avoid repetition (probably via defm)
+def : Pat<(int_riscv_qv_x (nxv8i8 VR:$vs1), (XLenVT GPR:$rs2), (XLenVT imm:$block), VLOpFrag),
+          (Pseudo_QV_X_M1 
                    VR:$vs1, 
                    GPR:$rs2, 
                    imm:$block,

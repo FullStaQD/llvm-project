@@ -31,6 +31,13 @@ declare void @llvm.riscv.qv.h.nxv8i8.i32.i32(
     i32 %block_imm,              ; Block_imm (will be constrained to 5 bits)
     i32 %vl                      ; vl (for vsetvli magic)
 )
+; qv.x vs1, rs2, Block_imm
+declare void @llvm.riscv.qv.x.nxv8i8.i32.i32(
+    <vscale x 8 x i8> %tgt,      ; vs1
+    i32 %tag,                    ; rs2
+    i32 %block_imm,              ; Block_imm (will be constrained to 5 bits)
+    i32 %vl                      ; vl (for vsetvli magic)
+)
 
 define void @_start() {
 entry:
@@ -46,8 +53,9 @@ entry:
     ; my.vadd.vx with VL = 3
     %v2 = call <vscale x 8 x i8> @llvm.riscv.my.vadd.nxv8i8.i32.i32(<vscale x 8 x i8> poison, <vscale x 8 x i8> %v1, i32 0, i32 3)
 
-    ; qv.h with VL = 2 (!= 3 to test vsetvli magic)
+    ; QV.SINGLE with VL = 2 (!= 3 to test vsetvli magic)
     call void @llvm.riscv.qv.h.nxv8i8.i32.i32(<vscale x 8 x i8> %v2, i32 85, i32 12, i32 2)
+    call void @llvm.riscv.qv.x.nxv8i8.i32.i32(<vscale x 8 x i8> %v2, i32 85, i32 12, i32 3)
 
     ; FIXME: does this really work?
     ; jal zero, 0 -> infinite loop
