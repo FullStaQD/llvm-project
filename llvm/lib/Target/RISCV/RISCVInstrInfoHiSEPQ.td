@@ -35,11 +35,11 @@ class RVInstQVSingle<bits<6> funct6, RISCVVFormat opv, dag outs, dag ins,
   bits<5> rs2;
   bits<5> vs1;
   bits<5> block_imm;
-  bit vm;
+  // bit vm;
 
   // Assignments
   let Inst{31-26} = funct6;
-  let Inst{25} = vm;
+  let Inst{25} = 1; // NOTE: hardcoded vm=1 (unmasked)
   let Inst{24-20} = rs2;
   let Inst{19-15} = vs1;
   let Inst{14-12} = opv.Value;
@@ -51,15 +51,19 @@ class RVInstQVSingle<bits<6> funct6, RISCVVFormat opv, dag outs, dag ins,
 }
 
 class VALUQVSingle<bits<6> funct6, RISCVVFormat opv, string opcodestr>
-    : RVInstQVSingle<funct6, opv, (outs),
-                // Notice the order: VR goes to vs1 (19-15), GPR goes to rs2 (24-20)
-                (ins VR:$vs1, GPR:$rs2, uimm5:$block_imm, VMaskOp:$vm),
-                opcodestr, "$vs1, $rs2$vm, $block_imm">;
+    : RVInstQVSingle<
+        funct6, 
+        opv, 
+        (outs),
+        (ins VR:$vs1, GPR:$rs2, uimm5:$block_imm), // NOTE: without VMaskOp:$vm for simplicity
+        opcodestr, 
+        // "$vs1, $rs2$vm, $block_imm" // *with* mask
+        "$vs1, $rs2, $block_imm">;
 
 def QV_H : VALUQVSingle<QV_H_FUNCT6, OPIQVSingle, "qv.h">, 
                  SchedBinaryMC<"WriteVIALUX", "ReadVIALUV", "ReadVIALUX">;
 
-// FIXME: do not hardcode BaseInstr
+// FIXME: do not hardcode BaseInstr?
 class VPseudoQVSingleNoMask<VReg vs1_rc, DAGOperand rs2_rc, LMULInfo m> :
   RISCVVPseudo<(outs), 
                (ins vs1_rc:$vs1, rs2_rc:$rs2, uimm5:$block, GPR:$vl, uimm5:$sew, uimm5:$policy)> {
@@ -76,14 +80,14 @@ class VPseudoQVSingleNoMask<VReg vs1_rc, DAGOperand rs2_rc, LMULInfo m> :
 // We use V_M1 to automatically get the 'VR' register class
 def Pseudo_QV_H_M1 : VPseudoQVSingleNoMask<VR, GPR, V_M1>;
 
-def : Pat<(int_riscv_qv_h (nxv8i8 VR:$vs1), (XLenVT GPR:$rs2), (XLenVT timm:$block), VLOpFrag),
+def : Pat<(int_riscv_qv_h (nxv8i8 VR:$vs1), (XLenVT GPR:$rs2), (XLenVT imm:$block), VLOpFrag),
           (Pseudo_QV_H_M1 
                    VR:$vs1, 
                    GPR:$rs2, 
-                   timm:$block, 
+                   imm:$block, 
                    GPR:$vl, 
-                   3, // SEW
-                   0  // policy: 0 = Tail Undisturbed, Mask Undisturbed
+                   3,      // SEW
+                   0       // policy
           )>;
 
 //////////////////////////////////////////////////////////////////////////////////

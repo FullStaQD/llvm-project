@@ -43,9 +43,6 @@ declare void @llvm.riscv.qv.h.nxv8i8.i32.i32(
     i32 %vl                      ; vl (for vsetvli magic)
 )
 
-; Your custom qv.h intrinsic: returns vector, takes (input_vector, tag, immediate, vector_length)
-;declare void @llvm.riscv.qv.h.nxv8i8(<vscale x 8 x i8>, i32, i32, i32)
-
 define void @_start() {
 entry:
     ; s0 = 0x1000
