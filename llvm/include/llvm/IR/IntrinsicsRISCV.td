@@ -1985,3 +1985,24 @@ include "llvm/IR/IntrinsicsRISCVXsf.td"
 include "llvm/IR/IntrinsicsRISCVXCV.td"
 include "llvm/IR/IntrinsicsRISCVXAndes.td"
 include "llvm/IR/IntrinsicsRISCVXMIPS.td"
+
+// FIXME: move elsewhere
+
+let TargetPrefix = "riscv" in {
+  // Generic intrinsic for my_vadd.vx
+  def int_riscv_my_vadd : Intrinsic<[llvm_anyvector_ty], // Output
+                         [LLVMMatchType<0>,             // Passthru (must match output type)
+                          LLVMMatchType<0>,             // vs2 (Vector operand)
+                          llvm_anyint_ty,               // rs1 (Scalar operand)
+                          llvm_anyint_ty],              // vl
+                         [IntrNoMem]>;                  // Pure math, no memory side effects
+}
+
+let TargetPrefix = "riscv" in {
+  def int_riscv_qv_h : Intrinsic<[], 
+                                [llvm_anyvector_ty, // vs1 (tgt)
+                                 llvm_i32_ty,       // rs2 (tag)
+                                 llvm_i32_ty,       // Block_imm, FIXME: problem that it is just 5 bits?
+                                 llvm_i32_ty],      // VL
+                                [IntrHasSideEffects]>;
+}

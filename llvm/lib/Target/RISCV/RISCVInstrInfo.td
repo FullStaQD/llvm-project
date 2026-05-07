@@ -2350,6 +2350,7 @@ include "RISCVInstrInfoV.td"
 include "RISCVInstrInfoZvk.td"
 include "RISCVInstrInfoZvqdotq.td"
 include "RISCVInstrInfoZvfofp8min.td"
+include "RISCVInstrInfoHiSEPQ.td" // NOTE: fullstaqd added this
 
 // Packed SIMD
 include "RISCVInstrInfoP.td"
