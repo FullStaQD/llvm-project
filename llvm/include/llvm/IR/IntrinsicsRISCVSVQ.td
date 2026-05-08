@@ -41,5 +41,5 @@ let TargetPrefix = "riscv" in {
     def int_riscv_svq_cx : 
         Intrinsic<[],
                   [llvm_anyvector_ty, llvm_anyvector_ty, llvm_anyint_ty, llvm_anyint_ty],
-                  [IntrHasSideEffects, IntrNoMem, ImmArg<ArgIndex<2>>]>;
+                  [IntrHasSideEffects, IntrNoMem]>;
 }
