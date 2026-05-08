@@ -27,20 +27,19 @@ let TargetPrefix = "riscv" in {
         Intrinsic<[llvm_i32_ty],
                   [llvm_i32_ty, llvm_i32_ty],
                   [IntrNoMem]>;
-    def int_riscv_svq_h :
-            Intrinsic<[],
-            [llvm_anyvector_ty, llvm_i32_ty, llvm_i32_ty],
-            []>;
-    def int_riscv_svq_x : 
-        Intrinsic<[llvm_void_ty],
-                  [llvm_anyvector_ty, llvm_i32_ty, llvm_i32_ty],
-                  [IntrHasSideEffects, ImmArg<ArgIndex<2>>]>;
-    def int_riscv_svq_mz : 
-        Intrinsic<[llvm_void_ty],
-                  [llvm_anyvector_ty, llvm_i32_ty, llvm_i32_ty],
-                  [IntrHasSideEffects, ImmArg<ArgIndex<2>>]>;
+    // QV.SINGLE vs1, rs2, Block_imm
+    class QVSingleIntrinsic : Intrinsic<[], // void return type
+                         [llvm_anyvector_ty, // vs1 (tgt)
+                          llvm_anyint_ty,    // rs2 (tag)
+                          llvm_anyint_ty,    // Block_imm (wait time)
+                          llvm_anyint_ty],   // vl
+                         [IntrHasSideEffects, IntrNoMem]>;
+
+    def int_riscv_svq_h : QVSingleIntrinsic;
+    def int_riscv_svq_x : QVSingleIntrinsic;
+    def int_riscv_svq_mz : QVSingleIntrinsic;
     def int_riscv_svq_cx : 
-        Intrinsic<[llvm_void_ty],
-                  [llvm_anyvector_ty, llvm_anyvector_ty, llvm_i32_ty],
-                  [IntrHasSideEffects, ImmArg<ArgIndex<2>>]>;
+        Intrinsic<[],
+                  [llvm_anyvector_ty, llvm_anyvector_ty, llvm_anyint_ty, llvm_anyint_ty],
+                  [IntrHasSideEffects, IntrNoMem, ImmArg<ArgIndex<2>>]>;
 }

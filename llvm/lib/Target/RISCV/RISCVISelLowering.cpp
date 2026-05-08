@@ -11843,6 +11843,26 @@ SDValue RISCVTargetLowering::LowerINTRINSIC_VOID(SDValue Op,
     return getVCIXISDNodeVOID(Op, DAG, RISCVISD::SF_VC_VVW_SE);
   case Intrinsic::riscv_sf_vc_fvw_se:
     return getVCIXISDNodeVOID(Op, DAG, RISCVISD::SF_VC_FVW_SE);
+  case Intrinsic::riscv_svq_h:
+  case Intrinsic::riscv_svq_x:
+  case Intrinsic::riscv_svq_mz:
+  case Intrinsic::riscv_svq_cx: {
+    if (!Subtarget.is64Bit())
+      break;
+    SDLoc DL(Op);
+    SmallVector<SDValue, 8> Operands(Op->ops());
+    bool Changed = false;
+    for (unsigned i = 2; i < Operands.size(); ++i) {
+      if (Operands[i].getValueType() == MVT::i32) {
+        unsigned ExtOpc = isa<ConstantSDNode>(Operands[i]) ? ISD::SIGN_EXTEND : ISD::ANY_EXTEND;
+        Operands[i] = DAG.getNode(ExtOpc, DL, Subtarget.getXLenVT(), Operands[i]);
+        Changed = true;
+      }
+    }
+    if (Changed)
+      return DAG.getNode(Op.getOpcode(), DL, Op->getVTList(), Operands);
+    break;
+  }
   }
 
   return lowerVectorIntrinsicScalars(Op, DAG, Subtarget);
