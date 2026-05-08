@@ -489,11 +489,6 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
     setOperationAction(ISD::SSHLSAT, MVT::i32, Legal);
   }
 
-  // Custom instruction TODO: put it in the correct place
-  if (Subtarget.hasStdExtSVQ()) {
-    setOperationAction(ISD::INTRINSIC_WO_CHAIN, MVT::i32, Custom);
-  }
-
   static const unsigned FPLegalNodeTypes[] = {
       ISD::FMINNUM,       ISD::FMAXNUM,        ISD::FMINIMUMNUM,
       ISD::FMAXIMUMNUM,   ISD::LRINT,          ISD::LLRINT,

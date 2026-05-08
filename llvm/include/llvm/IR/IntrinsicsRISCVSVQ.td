@@ -16,17 +16,6 @@
 
 // Standard Vector Quantum extension of RISCV
 
-let TargetPrefix = "riscv" in {
-// Custom add instruction. It will translate to: @llvm.riscv.svq.add()
-    def int_riscv_svq_add :     
-        Intrinsic<[llvm_i32_ty], 
-                  [llvm_i32_ty, llvm_i32_ty],
-                  [IntrNoMem]>;
-    
-    def int_riscv_svq_mul : 
-        Intrinsic<[llvm_i32_ty],
-                  [llvm_i32_ty, llvm_i32_ty],
-                  [IntrNoMem]>;
     // QV.SINGLE vs1, rs2, Block_imm
     class QVSingleIntrinsic : Intrinsic<[], // void return type
                          [llvm_anyvector_ty, // vs1 (tgt)
@@ -34,12 +23,19 @@ let TargetPrefix = "riscv" in {
                           llvm_anyint_ty,    // Block_imm (wait time)
                           llvm_anyint_ty],   // vl
                          [IntrHasSideEffects, IntrNoMem]>;
+    
+    // QV.Pair vs1, vs2, Block_imm
+    class QVPairIntrinsic : Intrinsic<[],
+                         [llvm_anyvector_ty, // vs1 (tgt)
+                          llvm_anyvector_ty, // vs2 (src)
+                          llvm_anyint_ty,    // Block_imm (wait time)
+                          llvm_anyint_ty],   // vl
+                         [IntrHasSideEffects, IntrNoMem]>;
 
+
+let TargetPrefix = "riscv" in {
     def int_riscv_svq_h : QVSingleIntrinsic;
     def int_riscv_svq_x : QVSingleIntrinsic;
     def int_riscv_svq_mz : QVSingleIntrinsic;
-    def int_riscv_svq_cx : 
-        Intrinsic<[],
-                  [llvm_anyvector_ty, llvm_anyvector_ty, llvm_anyint_ty, llvm_anyint_ty],
-                  [IntrHasSideEffects, IntrNoMem]>;
+    def int_riscv_svq_cx : QVPairIntrinsic;
 }
