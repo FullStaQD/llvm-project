@@ -4,11 +4,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-// FIXME: funct6=0b111111 with OPIVX (func3=100) collides with VWMACCSU.VX from the
-// standard V extension (probably).
 defvar MY_VADD_FUNCT6 = 0b111111;
 
-def MY_VADD_VX : VALUVX<MY_VADD_FUNCT6, OPIVX, "my_vadd.vx">, 
+def MY_VADD_VX : VALUVX<MY_VADD_FUNCT6, OPIVX, "my_vadd.vx">,
                  SchedBinaryMC<"WriteVIALUX", "ReadVIALUV", "ReadVIALUX">;
 
 // We define a pseudo specifically for the M1 LMUL and E8 SEW for your experiment
@@ -34,9 +32,6 @@ def : Pat<(nxv8i8 (int_riscv_my_vadd
 //
 //===----------------------------------------------------------------------===//
 
-// FIXME: QV_X: funct6=0b111101 with OPIVV (func3=000) — collides with VWMACC.VV from the standard
-// V extension (probably).
-// QV_H: funct6=0b111110 with OPIVV (func3=000) — safe, VWMACCUS only defines a VX variant.
 defvar QV_H_FUNCT6 = 0b111110;
 defvar QV_X_FUNCT6 = 0b111101;
 
