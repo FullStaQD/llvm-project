@@ -4,6 +4,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+// FIXME: funct6=0b111111 with OPIVX (func3=100) collides with VWMACCSU.VX from the
+// standard V extension (probably).
 defvar MY_VADD_FUNCT6 = 0b111111;
 
 def MY_VADD_VX : VALUVX<MY_VADD_FUNCT6, OPIVX, "my_vadd.vx">, 
@@ -32,6 +34,9 @@ def : Pat<(nxv8i8 (int_riscv_my_vadd
 //
 //===----------------------------------------------------------------------===//
 
+// FIXME: QV_X: funct6=0b111101 with OPIVV (func3=000) — collides with VWMACC.VV from the standard
+// V extension (probably).
+// QV_H: funct6=0b111110 with OPIVV (func3=000) — safe, VWMACCUS only defines a VX variant.
 defvar QV_H_FUNCT6 = 0b111110;
 defvar QV_X_FUNCT6 = 0b111101;
 
@@ -60,7 +65,6 @@ class RVInstQVSingle<bits<6> funct6, RISCVVFormat opv, dag outs, dag ins,
   let Inst{6-0} = OPC_OP_V.Value; // def OPC_OP_V : RISCVOpcode<"OP_V", 0b1010111>;
 
   let Uses = [VL, VTYPE];
-  let RVVConstraint = VMConstraint;
 }
 
 class QVSingle<bits<6> funct6, RISCVVFormat opv, string opcodestr>
@@ -84,15 +88,14 @@ def QV_X : QVSingle<QV_X_FUNCT6, OPIQVSingle, "qv.x">;
 //===----------------------------------------------------------------------===//
 
 class VPseudoQVSingleNoMask<VReg vs1_rc, DAGOperand rs2_rc, LMULInfo m> :
-  RISCVVPseudo<(outs), 
-               (ins vs1_rc:$vs1, rs2_rc:$rs2, uimm5:$block, uimm5:$vm, GPR:$vl, uimm5:$sew, uimm5:$policy)> {
+  RISCVVPseudo<(outs),
+               (ins vs1_rc:$vs1, rs2_rc:$rs2, uimm5:$block_imm, uimm5:$vm, GPR:$vl, uimm5:$sew)> {
   let VLMul = m.value;
   let HasVLOp = 1;
   let HasSEWOp = 1;
-  let HasVecPolicyOp = 1;
   // let BaseInstr = ...; // set later with QV_H, QV_X etc
 
-  let hasSideEffects = 1; 
+  let hasSideEffects = 1;
   let mayLoad = 0;
   let mayStore = 0;
 }
@@ -106,15 +109,14 @@ multiclass QVSingleGate<Instruction BaseInst, Intrinsic Intrin> {
   }
 
   // Pattern (anonymous)
-  def : Pat<(Intrin (nxv8i8 VR:$vs1), (XLenVT GPR:$rs2), (XLenVT imm:$block), VLOpFrag),
+  def : Pat<(Intrin (nxv8i8 VR:$vs1), (XLenVT GPR:$rs2), uimm5:$block_imm, VLOpFrag),
             (!cast<Instruction>(NAME # "_M1") // NAME = e.g. "Pseudo_QV_H" from defm below
-                     VR:$vs1, 
-                     GPR:$rs2, 
-                     imm:$block, 
-                     1,      // $vm (unmasked)
-                     GPR:$vl, 
-                     3,      // SEW
-                     0       // policy
+                     VR:$vs1,
+                     GPR:$rs2,
+                     imm:$block_imm,
+                     1,           // $vm (unmasked)
+                     GPR:$vl,
+                     3            // SEW = log2(8) → e8
             )>;
 }
 
