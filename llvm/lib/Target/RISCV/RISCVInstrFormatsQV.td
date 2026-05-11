@@ -1,4 +1,4 @@
-//===-- RISCVInstrFormatsSVQ.td - RISC-V SVQ Instruction Formats -*- tablegen -*-=//
+//===-- RISCVInstrFormatsQV.td - RISC-V QV Instruction Formats -*- tablegen -*-=//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  This file describes the RISC-V SVQ extension instruction formats.
+//  This file describes the RISC-V QV extension instruction formats.
 //
 //===----------------------------------------------------------------------===//
 
@@ -15,8 +15,8 @@ defvar QV_PAIR_FUNCT3   = 0b001;
 defvar QV_GR_FUNCT3     = 0b010;
 defvar QV_VR_FUNCT3     = 0b011;
 
-// Custom list of supported VTypeInfo records for SVQ instructions.
-defvar SupportedSVQVTypes = [VI8M1, VI8M2, VI8M4, VI8M8];
+// Custom list of supported VTypeInfo records for QV instructions.
+defvar SupportedQVVTypes = [VI8M1, VI8M2, VI8M4, VI8M8];
 
 // QV.SINGLE — Single-Qubit Gate
 // Applies a single-qubit gate to the qubits listed in vs1. The 32-bit 

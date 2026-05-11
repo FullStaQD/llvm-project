@@ -1,7 +1,7 @@
-// Custom add instruction for SVQ extension. TODO: Move it to another file.
-include "RISCVInstrFormatsSVQ.td"
+// Custom add instruction for QV extension. TODO: Move it to another file.
+include "RISCVInstrFormatsQV.td"
 
-let Predicates = [HasStdExtSVQ] in {
+let Predicates = [HasStdExtQV] in {
 
 
 defvar QV_H_FUNCT7  = 0b0001000;
@@ -9,13 +9,13 @@ defvar QV_X_FUNCT7  = 0b0001001;
 defvar QV_MZ_FUNCT7 = 0b1101000;
 defvar QV_CX_FUNCT7 = 0b0001101;
 
-def SVQ_H  : RVInstSQ<QV_H_FUNCT7,  "svq.h">;
-def SVQ_X  : RVInstSQ<QV_X_FUNCT7,  "svq.x">;
-def SVQ_MZ : RVInstSQ<QV_MZ_FUNCT7, "svq.mz">;
-def SVQ_CX : RVInstPQ<QV_CX_FUNCT7, "svq.cx">;
+def QV_H  : RVInstSQ<QV_H_FUNCT7,  "qv.h">;
+def QV_X  : RVInstSQ<QV_X_FUNCT7,  "qv.x">;
+def QV_MZ : RVInstSQ<QV_MZ_FUNCT7, "qv.mz">;
+def QV_CX : RVInstPQ<QV_CX_FUNCT7, "qv.cx">;
 
 // Pseudos for VSETVLI insertion and LMUL handling
-multiclass VPseudoSVQ_Single {
+multiclass VPseudoQV_Single {
   foreach m = MxList in {
     let VLMul = m.value in {
       def "_" # m.MX : RISCVVPseudo<(outs),
@@ -30,7 +30,7 @@ multiclass VPseudoSVQ_Single {
   }
 }
 
-multiclass VPseudoSVQ_Double {
+multiclass VPseudoQV_Double {
   foreach m = MxList in {
     let VLMul = m.value in {
       def "_" # m.MX : RISCVVPseudo<(outs),
@@ -45,14 +45,14 @@ multiclass VPseudoSVQ_Double {
   }
 }
 
-defm PseudoSVQ_H  : VPseudoSVQ_Single;
-defm PseudoSVQ_X  : VPseudoSVQ_Single;
-defm PseudoSVQ_MZ : VPseudoSVQ_Single;
-defm PseudoSVQ_CX : VPseudoSVQ_Double;
+defm PseudoQV_H  : VPseudoQV_Single;
+defm PseudoQV_X  : VPseudoQV_Single;
+defm PseudoQV_MZ : VPseudoQV_Single;
+defm PseudoQV_CX : VPseudoQV_Double;
 
 // Patterns to match the intrinsics to the Pseudos
-multiclass VPatSVQ_Single<string intrinsic, string inst> {
-  foreach vti = SupportedSVQVTypes in {
+multiclass VPatQV_Single<string intrinsic, string inst> {
+  foreach vti = SupportedQVVTypes in {
     let Predicates = GetVTypeMinimalPredicates<vti>.Predicates in {
       def : Pat<(!cast<Intrinsic>(intrinsic) (vti.Vector vti.RegClass:$vs1),
                                              (XLenVT GPR:$rs2), 
@@ -64,8 +64,8 @@ multiclass VPatSVQ_Single<string intrinsic, string inst> {
   }
 }
 
-multiclass VPatSVQ_Double<string intrinsic, string inst> {
-  foreach vti = SupportedSVQVTypes in {
+multiclass VPatQV_Double<string intrinsic, string inst> {
+  foreach vti = SupportedQVVTypes in {
     let Predicates = GetVTypeMinimalPredicates<vti>.Predicates in {
       def : Pat<(!cast<Intrinsic>(intrinsic) (vti.Vector vti.RegClass:$vs1),
                                              (vti.Vector vti.RegClass:$vs2),
@@ -78,8 +78,8 @@ multiclass VPatSVQ_Double<string intrinsic, string inst> {
   }
 }
 
-defm : VPatSVQ_Single<"int_riscv_svq_h",  "PseudoSVQ_H">;
-defm : VPatSVQ_Single<"int_riscv_svq_x",  "PseudoSVQ_X">;
-defm : VPatSVQ_Single<"int_riscv_svq_mz", "PseudoSVQ_MZ">;
-defm : VPatSVQ_Double<"int_riscv_svq_cx", "PseudoSVQ_CX">;
+defm : VPatQV_Single<"int_riscv_qv_h",  "PseudoQV_H">;
+defm : VPatQV_Single<"int_riscv_qv_x",  "PseudoQV_X">;
+defm : VPatQV_Single<"int_riscv_qv_mz", "PseudoQV_MZ">;
+defm : VPatQV_Double<"int_riscv_qv_cx", "PseudoQV_CX">;
 }

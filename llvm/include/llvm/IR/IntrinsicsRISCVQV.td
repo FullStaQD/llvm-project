@@ -1,4 +1,4 @@
-//===- IntrinsicsRISCVSVQ.td - Defines RISCVSVQ intrinsics -*- tablegen -*-===//
+//===- IntrinsicsRISCVQV.td - Defines RISCVQV intrinsics -*- tablegen -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -12,7 +12,7 @@
 
 
 //===----------------------------------------------------------------------===//
-// SVQ
+// QV
 
 // Standard Vector Quantum extension of RISCV
 
@@ -34,8 +34,8 @@ class QVPairIntrinsic : Intrinsic<[],
 
 
 let TargetPrefix = "riscv" in {
-    def int_riscv_svq_h : QVSingleIntrinsic;
-    def int_riscv_svq_x : QVSingleIntrinsic;
-    def int_riscv_svq_mz : QVSingleIntrinsic;
-    def int_riscv_svq_cx : QVPairIntrinsic;
+    def int_riscv_qv_h : QVSingleIntrinsic;
+    def int_riscv_qv_x : QVSingleIntrinsic;
+    def int_riscv_qv_mz : QVSingleIntrinsic;
+    def int_riscv_qv_cx : QVPairIntrinsic;
 }

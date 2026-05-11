@@ -744,13 +744,13 @@ def HasStdExtZvfbfminOrZvfofp8min
                          "'Zvfbfmin' (Vector BF16 Converts) or "
                          "'Zvfofp8min' (Vector OFP8 Converts)">;
 
-def FeatureStdExtSVQ
-    : RISCVExperimentalExtension<0, 1, "SVQ Quantum Extension">;
+def FeatureStdExtQV
+    : RISCVExperimentalExtension<0, 1, "QV Quantum Extension">;
 
-def HasStdExtSVQ
-    : Predicate<"Subtarget->hasStdExtSVQ()">,
-      AssemblerPredicate<(all_of FeatureStdExtSVQ),
-                         "'SVQ' (SVQ Quantum Extension)">;
+def HasStdExtQV
+    : Predicate<"Subtarget->hasStdExtQV()">,
+      AssemblerPredicate<(all_of FeatureStdExtQV),
+                         "'QV' (QV Quantum Extension)">;
 // Vector Cryptography and Bitmanip Extensions
 
 def FeatureStdExtZvkb
