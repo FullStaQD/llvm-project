@@ -7754,7 +7754,6 @@ SDValue RISCVTargetLowering::LowerOperation(SDValue Op,
   default:
     reportFatalInternalError(
         "Unimplemented RISCVTargetLowering::LowerOperation Case");
-
   case ISD::PREFETCH:
     return LowerPREFETCH(Op, Subtarget, DAG);
   case ISD::ATOMIC_FENCE:
