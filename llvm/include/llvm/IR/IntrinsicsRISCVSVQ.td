@@ -16,21 +16,21 @@
 
 // Standard Vector Quantum extension of RISCV
 
-    // QV.SINGLE vs1, rs2, Block_imm
-    class QVSingleIntrinsic : Intrinsic<[], // void return type
-                         [llvm_anyvector_ty, // vs1 (tgt)
-                          llvm_anyint_ty,    // rs2 (tag)
-                          llvm_anyint_ty,    // Block_imm (wait time)
-                          llvm_anyint_ty],   // vl
-                         [IntrHasSideEffects, IntrNoMem]>;
+// QV.SINGLE vs1, rs2, Block_imm
+class QVSingleIntrinsic : Intrinsic<[], // void return type
+                     [llvm_anyvector_ty, // vs1 (tgt)
+                      llvm_anyint_ty,    // rs2 (tag)
+                      llvm_anyint_ty,    // Block_imm (wait time)
+                      llvm_anyint_ty],   // vl
+                     [IntrHasSideEffects, IntrNoMem]>;
     
-    // QV.Pair vs1, vs2, Block_imm
-    class QVPairIntrinsic : Intrinsic<[],
-                         [llvm_anyvector_ty, // vs1 (tgt)
-                          llvm_anyvector_ty, // vs2 (src)
-                          llvm_anyint_ty,    // Block_imm (wait time)
-                          llvm_anyint_ty],   // vl
-                         [IntrHasSideEffects, IntrNoMem]>;
+// QV.Pair vs1, vs2, Block_imm
+class QVPairIntrinsic : Intrinsic<[],
+                     [llvm_anyvector_ty, // vs1 (tgt)
+                      llvm_anyvector_ty, // vs2 (src)
+                      llvm_anyint_ty,    // Block_imm (wait time)
+                      llvm_anyint_ty],   // vl
+                     [IntrHasSideEffects, IntrNoMem]>;
 
 
 let TargetPrefix = "riscv" in {

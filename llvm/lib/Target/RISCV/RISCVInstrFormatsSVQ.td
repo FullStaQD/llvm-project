@@ -10,6 +10,14 @@
 //
 //===----------------------------------------------------------------------===//
 
+defvar QV_SINGLE_FUNCT3 = 0b000;
+defvar QV_PAIR_FUNCT3   = 0b001;
+defvar QV_GR_FUNCT3     = 0b010;
+defvar QV_VR_FUNCT3     = 0b011;
+
+// Custom list of supported VTypeInfo records for SVQ instructions.
+defvar SupportedSVQVTypes = [VI8M1, VI8M2, VI8M4, VI8M8];
+
 // QV.SINGLE — Single-Qubit Gate
 // Applies a single-qubit gate to the qubits listed in vs1. The 32-bit 
 // scalar payload from rs2 is forwarded to the quantum backend on the 
@@ -18,19 +26,31 @@
 // +---------+----------+----------+--------+----------+---------+
 // |  GateID |   rs2    |  vs1 (S) | 000(S) | Block_imm| 1010111 |
 // +---------+----------+----------+--------+----------+---------+
-class RVInstSQ<bits<7> gateid, dag outs, dag ins, string opcodestr,
-               string argstr>
-    : RVInst<outs, ins, opcodestr, argstr, [], InstFormatR> {
+
+class RVInstSQ<bits<7> gateid, string opcodestr>
+    : RVInst<(outs), 
+             (ins VR:$vs1, GPR:$rs2, uimm5:$block_imm), 
+             opcodestr, 
+             "$vs1, $rs2, $block_imm", 
+             [], 
+             InstFormatR> {
   bits<5> vs1;
   bits<5> rs2;
   bits<5> block_imm;
 
-  let Inst{6-0}   = 0b1010111;
+  let Inst{6-0}   = OPC_OP_V.Value; // def OPC_OP_V : RISCVOpcode<"OP_V", 0b1010111>;
   let Inst{11-7}  = block_imm;
-  let Inst{14-12} = 0b000;
+  let Inst{14-12} = QV_SINGLE_FUNCT3; // 0b000 for single-qubit gates
   let Inst{19-15} = vs1;
   let Inst{24-20} = rs2;
   let Inst{31-25} = gateid;
+
+  let hasSideEffects = 1;
+  let mayLoad = 0;
+  let mayStore = 0;
+
+  let Uses = [VL, VTYPE];
+  let RVVConstraint = VMConstraint;
 }
 
 // QV.PAIR — Two-Qubit Gate
@@ -41,19 +61,30 @@ class RVInstSQ<bits<7> gateid, dag outs, dag ins, string opcodestr,
 // |  GateID | vs2(src) | vs1(tgt) | 001(P) | Block_imm| 1010111 |
 // +---------+----------+----------+--------+----------+---------+
 
-class RVInstPQ<bits<7> gateid, dag outs, dag ins, string opcodestr,
-               string argstr>
-    : RVInst<outs, ins, opcodestr, argstr, [], InstFormatR> {
+class RVInstPQ<bits<7> gateid, string opcodestr>
+    : RVInst<(outs), 
+             (ins VR:$vs1, VR:$vs2, uimm5:$block_imm), 
+             opcodestr, 
+             "$vs1, $vs2, $block_imm", 
+             [], 
+             InstFormatR> {
   bits<5> vs1;
   bits<5> vs2;
   bits<5> block_imm;
 
-  let Inst{6-0}   = 0b1010111;
+  let Inst{6-0}   = OPC_OP_V.Value; // def OPC_OP_V : RISCVOpcode<"OP_V", 0b1010111>;
   let Inst{11-7}  = block_imm;
-  let Inst{14-12} = 0b001;
+  let Inst{14-12} = QV_PAIR_FUNCT3; // 0b001 for two-qubit gates
   let Inst{19-15} = vs1;
   let Inst{24-20} = vs2;
   let Inst{31-25} = gateid;
+
+  let hasSideEffects = 1;
+  let mayLoad = 0;
+  let mayStore = 0;
+
+  let Uses = [VL, VTYPE];
+  let RVVConstraint = VMConstraint;
 }
 
 // QV.ROT.G — Global Rotation (Scalar Angle)
@@ -70,12 +101,19 @@ class RVInstGRQ<bits<7> res, dag outs, dag ins, string opcodestr,
   bits<5> rs2;
   bits<5> block_imm;
 
-  let Inst{6-0}   = 0b1010111;
+  let Inst{6-0}   = OPC_OP_V.Value; // def OPC_OP_V : RISCVOpcode<"OP_V", 0b1010111>;
   let Inst{11-7}  = block_imm;
-  let Inst{14-12} = 0b010;
+  let Inst{14-12} = QV_GR_FUNCT3; // 0b010 for global rotation gates
   let Inst{19-15} = vs1;
   let Inst{24-20} = rs2;
   let Inst{31-25} = res;
+
+  let hasSideEffects = 1;
+  let mayLoad = 0;
+  let mayStore = 0;
+
+  let Uses = [VL, VTYPE];
+  let RVVConstraint = VMConstraint;
 }
 
 // QV.ROT.V — Variable Rotation (Per-Element Angle)
@@ -94,10 +132,17 @@ class RVInstVRQ<bits<7> res, dag outs, dag ins, string opcodestr,
   bits<5> vs2;
   bits<5> block_imm;
 
-  let Inst{6-0}   = 0b1010111;
+  let Inst{6-0}   = OPC_OP_V.Value; // def OPC_OP_V : RISCVOpcode<"OP_V", 0b1010111>;
   let Inst{11-7}  = block_imm;
-  let Inst{14-12} = 0b011;
+  let Inst{14-12} = QV_VR_FUNCT3; // 0b011 for variable rotation gates
   let Inst{19-15} = vs1;
   let Inst{24-20} = vs2;
   let Inst{31-25} = res;
+  
+  let hasSideEffects = 1;
+  let mayLoad = 0;
+  let mayStore = 0;
+
+  let Uses = [VL, VTYPE];
+  let RVVConstraint = VMConstraint;
 }
