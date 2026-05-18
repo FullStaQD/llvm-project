@@ -1,7 +1,7 @@
 // Custom add instruction for QV extension. TODO: Move it to another file.
 include "RISCVInstrFormatsQV.td"
 
-let Predicates = [HasStdExtQV] in {
+let Predicates = [HasVendorXQV] in {
 
 
 defvar QV_H_FUNCT7  = 0b0001000;
