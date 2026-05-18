@@ -37,5 +37,6 @@ let TargetPrefix = "riscv" in {
     def int_riscv_qv_h : QVSingleIntrinsic;
     def int_riscv_qv_x : QVSingleIntrinsic;
     def int_riscv_qv_mz : QVSingleIntrinsic;
+
     def int_riscv_qv_cx : QVPairIntrinsic;
 }
