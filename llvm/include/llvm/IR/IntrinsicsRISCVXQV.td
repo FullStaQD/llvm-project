@@ -6,15 +6,9 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file defines all of the RISCV-specific intrinsics.
+// Standard Vector Quantum extension of RISCV.
 //
 //===----------------------------------------------------------------------===//
-
-
-//===----------------------------------------------------------------------===//
-// QV
-
-// Standard Vector Quantum extension of RISCV
 
 // QV.SINGLE vs1, rs2, Block_imm
 class QVSingleIntrinsic : Intrinsic<[], // void return type

@@ -2318,7 +2318,6 @@ def : Pat<(int_riscv_pause), (FENCE 0x1, 0x0)>;
 // Standard extensions
 //===----------------------------------------------------------------------===//
 
-
 // Multiply and Division
 include "RISCVInstrInfoM.td"
 
@@ -2351,7 +2350,7 @@ include "RISCVInstrInfoV.td"
 include "RISCVInstrInfoZvk.td"
 include "RISCVInstrInfoZvqdotq.td"
 include "RISCVInstrInfoZvfofp8min.td"
-include "RISCVInstrInfoQV.td"
+include "RISCVInstrInfoXQV.td"
 
 // Packed SIMD
 include "RISCVInstrInfoP.td"
