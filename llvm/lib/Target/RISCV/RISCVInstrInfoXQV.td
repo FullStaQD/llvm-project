@@ -8,13 +8,13 @@ defvar QV_X_FUNCT7  = 0b0001001;
 defvar QV_MZ_FUNCT7 = 0b1101000;
 defvar QV_CX_FUNCT7 = 0b0001101;
 
-def QV_H  : RVInstSQ<QV_H_FUNCT7,  "qv.h">;
-def QV_X  : RVInstSQ<QV_X_FUNCT7,  "qv.x">;
-def QV_MZ : RVInstSQ<QV_MZ_FUNCT7, "qv.mz">;
-def QV_CX : RVInstPQ<QV_CX_FUNCT7, "qv.cx">;
+def QV_H  : RVInstQVSingle<QV_H_FUNCT7,  "qv.h">;
+def QV_X  : RVInstQVSingle<QV_X_FUNCT7,  "qv.x">;
+def QV_MZ : RVInstQVSingle<QV_MZ_FUNCT7, "qv.mz">;
+def QV_CX : RVInstQVPair<QV_CX_FUNCT7, "qv.cx">;
 
 // Pseudos for VSETVLI insertion and LMUL handling
-multiclass VPseudoQV_Single {
+multiclass RVPseudoQVSingle {
   foreach m = MxList in {
     let VLMul = m.value in {
       def "_" # m.MX : RISCVVPseudo<(outs),
@@ -29,7 +29,7 @@ multiclass VPseudoQV_Single {
   }
 }
 
-multiclass VPseudoQV_Pair {
+multiclass RVPseudoQVPair {
   foreach m = MxList in {
     let VLMul = m.value in {
       def "_" # m.MX : RISCVVPseudo<(outs),
@@ -44,13 +44,13 @@ multiclass VPseudoQV_Pair {
   }
 }
 
-defm PseudoQV_H  : VPseudoQV_Single;
-defm PseudoQV_X  : VPseudoQV_Single;
-defm PseudoQV_MZ : VPseudoQV_Single;
-defm PseudoQV_CX : VPseudoQV_Pair;
+defm PseudoQV_H  : RVPseudoQVSingle;
+defm PseudoQV_X  : RVPseudoQVSingle;
+defm PseudoQV_MZ : RVPseudoQVSingle;
+defm PseudoQV_CX : RVPseudoQVPair;
 
 // Patterns to match the intrinsics to the Pseudos
-multiclass VPatQV_Single<string intrinsic, string inst> {
+multiclass RVPatQVSingle<string intrinsic, string inst> {
   foreach vti = SupportedQVVTypes in {
     let Predicates = GetVTypeMinimalPredicates<vti>.Predicates in {
       def : Pat<(!cast<Intrinsic>(intrinsic) (vti.Vector vti.RegClass:$vs1),
@@ -63,7 +63,7 @@ multiclass VPatQV_Single<string intrinsic, string inst> {
   }
 }
 
-multiclass VPatQV_Pair<string intrinsic, string inst> {
+multiclass RVPatQVPair<string intrinsic, string inst> {
   foreach vti = SupportedQVVTypes in {
     def : Pat<(!cast<Intrinsic>(intrinsic) (vti.Vector vti.RegClass:$vs1),
                                            (vti.Vector vti.RegClass:$vs2),
@@ -75,8 +75,8 @@ multiclass VPatQV_Pair<string intrinsic, string inst> {
   }
 }
 
-defm : VPatQV_Single<"int_riscv_qv_h",  "PseudoQV_H">;
-defm : VPatQV_Single<"int_riscv_qv_x",  "PseudoQV_X">;
-defm : VPatQV_Single<"int_riscv_qv_mz", "PseudoQV_MZ">;
-defm : VPatQV_Pair<"int_riscv_qv_cx", "PseudoQV_CX">;
+defm : RVPatQVSingle<"int_riscv_qv_h",  "PseudoQV_H">;
+defm : RVPatQVSingle<"int_riscv_qv_x",  "PseudoQV_X">;
+defm : RVPatQVSingle<"int_riscv_qv_mz", "PseudoQV_MZ">;
+defm : RVPatQVPair<"int_riscv_qv_cx", "PseudoQV_CX">;
 }
