@@ -1,4 +1,4 @@
-; RUN: llc -mtriple=riscv32 -mattr=+v,+experimental-qv -verify-machineinstrs < %s | FileCheck %s
+; RUN: llc -mtriple=riscv32 -mattr=+experimental-xqv -verify-machineinstrs < %s | FileCheck %s
 
 target datalayout = "e-m:e-p:32:32-i64:64-n32-S128"
 
