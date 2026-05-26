@@ -46,4 +46,4 @@ entry:
   ret void
 }
 
-attributes #0 = { "target-features"="+v,+experimental-qv" }
+attributes #0 = { "target-features"="+v,+experimental-xqv" }
