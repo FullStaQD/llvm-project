@@ -11,7 +11,6 @@
 
 include "RISCVInstrFormatsXQV.td"
 
-def QV_CX : RVInstQVPair<QV_CX_FUNCT7, "qv.cx">;
 let Predicates = [HasVendorXQV] in {
 
 // TODO: synchronise funct7 slots with HiSEP-Q
