@@ -1,4 +1,4 @@
-//===-- RISCVInstrFormatsQV.td - RISC-V QV Instruction Formats -*- tablegen -*-=//
+//===-- RISCVInstrFormatsXQV.td - RISC-V QV Instruction Formats -*- tablegen -*-=//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -10,6 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+// TODO: synchronise funct3 slots with HiSEP-Q
 defvar QV_SINGLE_FUNCT3 = 0b000;
 defvar QV_PAIR_FUNCT3   = 0b001;
 defvar QV_GR_FUNCT3     = 0b010;

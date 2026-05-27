@@ -744,14 +744,6 @@ def HasStdExtZvfbfminOrZvfofp8min
                          "'Zvfbfmin' (Vector BF16 Converts) or "
                          "'Zvfofp8min' (Vector OFP8 Converts)">;
 
-def FeatureVendorXQV
-    : RISCVExperimentalExtension<0, 1, "QV Quantum Extension (HiSEP-Q 2.0)",
-                                [FeatureStdExtV]>;
-
-def HasVendorXQV
-    : Predicate<"Subtarget->hasVendorXQV()">,
-      AssemblerPredicate<(all_of FeatureVendorXQV),
-                         "'XQV' (QV Quantum Extension)">;
 // Vector Cryptography and Bitmanip Extensions
 
 def FeatureStdExtZvkb
@@ -1983,3 +1975,4 @@ def TuneSiFive7 : SubtargetFeature<"sifive7", "RISCVProcFamily", "SiFive7",
 def TuneVentanaVeyron : SubtargetFeature<"ventana-veyron", "RISCVProcFamily", "VentanaVeyron",
                                          "Ventana Veyron-Series processors">;
 
+include "RISCVFeaturesXQV.td"
