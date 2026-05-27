@@ -2,7 +2,7 @@
 
 target datalayout = "e-m:e-p:32:32-i64:64-n32-S128"
 
-// TODO: Check for LMUL>1.
+; TODO: Check for LMUL>1.
 ; qv.h vs1, rs2, Block_imm
 declare void @llvm.riscv.qv.h.nxv8i8.i32.i32.i32(<vscale x 8 x i8>, i32, i32, i32)
 
@@ -41,8 +41,8 @@ entry:
   call void @llvm.riscv.qv.cx.nxv8i8.nxv8i8.i32.i32(<vscale x 8 x i8> %tgt, <vscale x 8 x i8> %ctrl, i32 12, i32 4)
   call void @llvm.riscv.qv.mz.nxv8i8.i32.i32.i32(<vscale x 8 x i8> %tgt, i32 85, i32 12, i32 4)
 
-// TODO: output recording, e.g. via __quantum__rt__bool_record_output .
-// Requires support from HiSEP-Q in some form.
+; TODO: output recording, e.g. via __quantum__rt__bool_record_output .
+; Requires support from HiSEP-Q in some form.
 
   ret void
 }
