@@ -16,23 +16,6 @@ declare void @llvm.riscv.qv.cx.nxv8i8.nxv8i8.i32.i32(<vscale x 8 x i8>, <vscale 
 @tgt_qubits  = local_unnamed_addr constant <8 x i8> <i8 1, i8 3, i8 5, i8 7, i8 9, i8 11, i8 13, i8 15>, align 8
 
 define void @load_vectors() #0 {
-; CHECK-LABEL: load_vectors:
-; CHECK:       # %bb.0: # %entry
-; CHECK-NEXT:    lui a0, %hi(ctrl_qubits)
-; CHECK-NEXT:    addi a0, a0, %lo(ctrl_qubits)
-; CHECK-NEXT:    lui a1, %hi(tgt_qubits)
-; CHECK-NEXT:    addi a1, a1, %lo(tgt_qubits)
-; CHECK-NEXT:    vl1r.v v8, (a1)
-; CHECK-NEXT:    li a1, 2
-; CHECK-NEXT:    vl1r.v v9, (a0)
-; CHECK-NEXT:    li a0, 85
-; CHECK-NEXT:    vsetvli zero, a1, e8, m1, ta, ma
-; CHECK-NEXT:    qv.h v8, a0, 12
-; CHECK-NEXT:    li a1, 4
-; CHECK-NEXT:    vsetvli zero, a1, e8, m1, ta, ma
-; CHECK-NEXT:    qv.cx v8, v9, 12
-; CHECK-NEXT:    qv.mz v8, a0, 12
-; CHECK-NEXT:    ret
 entry:
   %ctrl = load <vscale x 8 x i8>, ptr @ctrl_qubits, align 8
   %tgt  = load <vscale x 8 x i8>, ptr @tgt_qubits, align 8
@@ -48,3 +31,21 @@ entry:
 }
 
 attributes #0 = { "target-features"="+experimental-xqv" }
+
+; CHECK-LABEL: load_vectors:
+; CHECK:       # %bb.0: # %entry
+; CHECK-NEXT:    lui [[A0:a[0-9]+]], %hi(ctrl_qubits)
+; CHECK-NEXT:    addi [[A0]], [[A0]], %lo(ctrl_qubits)
+; CHECK-NEXT:    lui [[A1:a[0-9]+]], %hi(tgt_qubits)
+; CHECK-NEXT:    addi [[A1]], [[A1]], %lo(tgt_qubits)
+; CHECK-NEXT:    vl1r.v [[V8:v[0-9]+]], ([[A1]])
+; CHECK-NEXT:    li [[A1]], 2
+; CHECK-NEXT:    vl1r.v [[V9:v[0-9]+]], ([[A0]])
+; CHECK-NEXT:    li [[A0]], 85
+; CHECK-NEXT:    vsetvli zero, [[A1]], e8, m1, ta, ma
+; CHECK-NEXT:    qv.h [[V8]], [[A0]], 12
+; CHECK-NEXT:    li [[A1]], 4
+; CHECK-NEXT:    vsetvli zero, [[A1]], e8, m1, ta, ma
+; CHECK-NEXT:    qv.cx [[V8]], [[V9]], 12
+; CHECK-NEXT:    qv.mz [[V8]], [[A0]], 12
+; CHECK-NEXT:    ret
