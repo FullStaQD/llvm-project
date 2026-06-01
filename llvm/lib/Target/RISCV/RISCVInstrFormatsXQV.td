@@ -86,4 +86,3 @@ class RVInstQVPair<bits<7> gateid, string opcodestr>
 
   let Uses = [VL, VTYPE];
 }
-
