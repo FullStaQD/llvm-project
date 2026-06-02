@@ -249,6 +249,7 @@
 // CHECK-NEXT:     zvqdotq              0.0       'Zvqdotq' (Vector quad widening 4D Dot Product)
 // CHECK-NEXT:     smpmpmt              0.6       'Smpmpmt' (PMP-based Memory Types Extension)
 // CHECK-NEXT:     svukte               0.3       'Svukte' (Address-Independent Latency of User-Mode Faults to Supervisor Addresses)
+// CHECK-NEXT:     xqv                  0.1       'XQV' (QV Quantum Extension (HiSEP-Q 2.0))
 // CHECK-NEXT:     xrivosvisni          0.1       'XRivosVisni' (Rivos Vector Integer Small New)
 // CHECK-NEXT:     xrivosvizip          0.1       'XRivosVizip' (Rivos Vector Register Zips)
 // CHECK-NEXT:     xsfmclic             0.1       'XSfmclic' (SiFive CLIC Machine-mode CSRs)
