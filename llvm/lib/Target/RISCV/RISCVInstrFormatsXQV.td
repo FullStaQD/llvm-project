@@ -17,15 +17,15 @@ defvar QV_GR_FUNCT3     = 0b010;
 defvar QV_VR_FUNCT3     = 0b011;
 
 // Custom list of supported VTypeInfo records for QV instructions.
-defvar SupportedQVVTypes = [VI8M1, VI8M2, VI8M4, VI8M8];
+defvar SupportedQVVTypes = [VI8MF2, VI8MF4, VI8MF8, VI8M1, VI8M2, VI8M4, VI8M8];
 
 // QV.SINGLE — Single-Qubit Gate
-// Applies a single-qubit gate to the qubits listed in vs1. The 32-bit 
-// scalar payload from rs2 is forwarded to the quantum backend on the 
+// Applies a single-qubit gate to the qubits listed in vs1. The 32-bit
+// scalar payload from rs2 is forwarded to the quantum backend on the
 // elem2 channel (e.g., as a software tag or timestamp).
 // 31       25   24    20   19    15   14  12   11     7   6     0
 // +---------+----------+----------+--------+----------+---------+
-// |  GateID |   rs2    |  vs1 (S) | 000(S) | Block_imm| 1010111 |
+// |  GateID |   rs2    |  vs1 (S) | 000(S) | Block_imm| 0001011 |
 // +---------+----------+----------+--------+----------+---------+
 
 class RVInstQVSingle<bits<7> gateid, string opcodestr>
@@ -44,7 +44,7 @@ class RVInstQVSingle<bits<7> gateid, string opcodestr>
   let Inst{19-15} = vs1;
   let Inst{14-12} = QV_SINGLE_FUNCT3;
   let Inst{11-7}  = block_imm;
-  let Inst{6-0}   = OPC_OP_V.Value;
+  let Inst{6-0}   = OPC_CUSTOM_0.Value;
 
   let hasSideEffects = 1;
   let mayLoad = 0;
@@ -54,11 +54,11 @@ class RVInstQVSingle<bits<7> gateid, string opcodestr>
 }
 
 // QV.PAIR — Two-Qubit Gate
-// Applies a two-qubit gate to element-wise pairs from vs2 (source/control) 
+// Applies a two-qubit gate to element-wise pairs from vs2 (source/control)
 // and vs1 (target).
 // 31       25   24    20   19    15   14  12   11     7   6     0
 // +---------+----------+----------+--------+----------+---------+
-// |  GateID | vs2(src) | vs1(tgt) | 001(P) | Block_imm| 1010111 |
+// |  GateID | vs2(src) | vs1(tgt) | 001(P) | Block_imm| 0001011 |
 // +---------+----------+----------+--------+----------+---------+
 
 class RVInstQVPair<bits<7> gateid, string opcodestr>
@@ -78,7 +78,7 @@ class RVInstQVPair<bits<7> gateid, string opcodestr>
   let Inst{19-15} = vs1;
   let Inst{14-12} = QV_PAIR_FUNCT3;
   let Inst{11-7}  = block_imm;
-  let Inst{6-0}   = OPC_OP_V.Value;
+  let Inst{6-0}   = OPC_CUSTOM_0.Value;
 
   let hasSideEffects = 1;
   let mayLoad = 0;
