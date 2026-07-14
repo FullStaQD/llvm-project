@@ -10,7 +10,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// TODO: synchronise funct3 slots with HiSEP-Q
 defvar QV_SINGLE_FUNCT3 = 0b000;
 defvar QV_PAIR_FUNCT3   = 0b001;
 defvar QV_GR_FUNCT3     = 0b010;
