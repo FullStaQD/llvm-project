@@ -10,13 +10,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-defvar QV_SINGLE_FUNCT3 = 0b000;
-defvar QV_PAIR_FUNCT3   = 0b001;
-defvar QV_GR_FUNCT3     = 0b010;
-defvar QV_VR_FUNCT3     = 0b011;
-
 // Custom list of supported VTypeInfo records for QV instructions.
-defvar SupportedQVVTypes = [VI8MF4, VI8MF8, VI8M1, VI8M2, VI8M4, VI8M8];
+// SEW=8 with ELEN=32 (zve32x) requires LMUL >= SEW/ELEN = mf4, so mf8 is excluded.
+defvar SupportedQVVTypes = [VI8MF4, VI8MF2, VI8M1, VI8M2, VI8M4, VI8M8];
 
 // QV.SINGLE — Single-Qubit Gate
 // Applies a single-qubit gate to the qubits listed in vs1. The 32-bit
@@ -41,7 +37,7 @@ class RVInstQVSingle<bits<7> gateid, string opcodestr>
   let Inst{31-25} = gateid;
   let Inst{24-20} = rs2;
   let Inst{19-15} = vs1;
-  let Inst{14-12} = QV_SINGLE_FUNCT3;
+  let Inst{14-12} = QVSingle.Funct3;
   let Inst{11-7}  = block_imm;
   let Inst{6-0}   = OPC_CUSTOM_0.Value;
 
@@ -75,7 +71,7 @@ class RVInstQVPair<bits<7> gateid, string opcodestr>
   let Inst{31-25} = gateid;
   let Inst{24-20} = vs2;
   let Inst{19-15} = vs1;
-  let Inst{14-12} = QV_PAIR_FUNCT3;
+  let Inst{14-12} = QVPair.Funct3;
   let Inst{11-7}  = block_imm;
   let Inst{6-0}   = OPC_CUSTOM_0.Value;
 

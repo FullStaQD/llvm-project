@@ -9,21 +9,17 @@
 //
 //===----------------------------------------------------------------------===//
 
+// RISCVInstrFormatsXQV.td takes funct3 from the class records, so the gate table comes first.
+include "RISCVXQVGates.td"
 include "RISCVInstrFormatsXQV.td"
 
 let Predicates = [HasVendorXQV] in {
 
-// TODO: synchronise funct7 slots with HiSEP-Q
-defvar QV_H_FUNCT7  = 0b0001000;
-defvar QV_X_FUNCT7  = 0b0001001;
-defvar QV_MZ_FUNCT7 = 0b1101000;
-defvar QV_CX_FUNCT7 = 0b0001101;
+foreach g = QVSingleGates in
+  def "QV_" # g.Suffix : RVInstQVSingle<g.GateID, g.Mnemonic>;
 
-def QV_H  : RVInstQVSingle<QV_H_FUNCT7,  "qv.h">;
-def QV_X  : RVInstQVSingle<QV_X_FUNCT7,  "qv.x">;
-def QV_MZ : RVInstQVSingle<QV_MZ_FUNCT7, "qv.mz">;
-
-def QV_CX : RVInstQVPair<QV_CX_FUNCT7, "qv.cx">;
+foreach g = QVPairGates in
+  def "QV_" # g.Suffix : RVInstQVPair<g.GateID, g.Mnemonic>;
 
 // Pseudos for VSETVLI insertion and LMUL handling
 multiclass RVPseudoQVSingle {
@@ -56,11 +52,11 @@ multiclass RVPseudoQVPair {
   }
 }
 
-defm PseudoQV_H  : RVPseudoQVSingle;
-defm PseudoQV_X  : RVPseudoQVSingle;
-defm PseudoQV_MZ : RVPseudoQVSingle;
+foreach g = QVSingleGates in
+  defm "PseudoQV_" # g.Suffix : RVPseudoQVSingle;
 
-defm PseudoQV_CX : RVPseudoQVPair;
+foreach g = QVPairGates in
+  defm "PseudoQV_" # g.Suffix : RVPseudoQVPair;
 
 // Patterns to match the intrinsics to the Pseudos
 multiclass RVPatQVSingle<string intrinsic, string inst> {
@@ -88,9 +84,9 @@ multiclass RVPatQVPair<string intrinsic, string inst> {
   }
 }
 
-defm : RVPatQVSingle<"int_riscv_qv_h",  "PseudoQV_H">;
-defm : RVPatQVSingle<"int_riscv_qv_x",  "PseudoQV_X">;
-defm : RVPatQVSingle<"int_riscv_qv_mz", "PseudoQV_MZ">;
+foreach g = QVSingleGates in
+  defm : RVPatQVSingle<g.IntrinsicRecord, "PseudoQV_" # g.Suffix>;
 
-defm : RVPatQVPair<"int_riscv_qv_cx", "PseudoQV_CX">;
+foreach g = QVPairGates in
+  defm : RVPatQVPair<g.IntrinsicRecord, "PseudoQV_" # g.Suffix>;
 }
