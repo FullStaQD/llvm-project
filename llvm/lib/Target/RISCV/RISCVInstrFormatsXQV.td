@@ -17,7 +17,7 @@ defvar QV_GR_FUNCT3     = 0b010;
 defvar QV_VR_FUNCT3     = 0b011;
 
 // Custom list of supported VTypeInfo records for QV instructions.
-defvar SupportedQVVTypes = [VI8MF2, VI8MF4, VI8MF8, VI8M1, VI8M2, VI8M4, VI8M8];
+defvar SupportedQVVTypes = [VI8MF4, VI8MF8, VI8M1, VI8M2, VI8M4, VI8M8];
 
 // QV.SINGLE — Single-Qubit Gate
 // Applies a single-qubit gate to the qubits listed in vs1. The 32-bit
