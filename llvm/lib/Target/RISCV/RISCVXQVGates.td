@@ -52,23 +52,20 @@ defvar QVAllGates = !listconcat(QVSingleGates, QVPairGates);
 //===----------------------------------------------------------------------===//
 // GateID allocation rules, checked by the assertions below.
 //
-// 0x00 is not allocatable. The vector core zeroes elem3[31:25] for every class
-// other than Single, so downstream a Single gate encoded as 0x00 is
-// indistinguishable from any Pair or rotation.
+// The 7-bit space is eight bands of 16, indexed by bits [6:4]. Each family and
+// the system ops get one band; the rest stay free for gates added later:
 //
-// Bit 6 splits the space the way the control electronics reads it:
+//   0x01-0x0F  single-qubit Clifford / Pauli   (H, X, Y, Z, S, S+)
+//   0x10-0x1F  single-qubit rotation           (RX, RY, RZ, T, T+)
+//   0x20-0x2F  two-qubit                       (CX, CZ, SWAP)
+//   0x30-0x5F  free
+//   0x60-0x6F  measurement and system          (MEASURE, resume, ...)
+//   0x70-0x7F  free
 //
-//   bit 6 = 0  unitary gate, bits [5:4] give the family
-//     0x01-0x0F  single-qubit Clifford / Pauli   (H, X, Y, Z, S, S+)
-//     0x10-0x1F  single-qubit rotation           (RX, RY, RZ, T, T+)
-//     0x20-0x2F  two-qubit                       (CX, CZ, SWAP)
-//     0x30-0x3F  reserved (multi-qubit)
+// 0x00 is not allocatable: non-Single classes emit it, so a 0x00 Single gate is
+// ambiguous downstream.
 //
-//   bit 6 = 1  measurement and system
-//     0x68       MEASURE, fixed by the hardware
-//     0x78       resume marker used by the reference programs
-//
-// A new gate takes the next free value in its family.
+// A new gate takes the next free value in its band.
 //===----------------------------------------------------------------------===//
 
 foreach g = QVAllGates in {
