@@ -52,20 +52,22 @@ defvar QVAllGates = !listconcat(QVSingleGates, QVPairGates);
 //===----------------------------------------------------------------------===//
 // GateID allocation rules, checked by the assertions below.
 //
-// The 7-bit space is eight bands of 16, indexed by bits [6:4]. Each family and
-// the system ops get one band; the rest stay free for gates added later:
+// funct3 already tells the decoder a gate's class (Single / Pair / Rot), so the
+// unitary GateIDs need no family structure of their own: they are just unique
+// values assigned from 0x01 up.
 //
-//   0x01-0x0F  single-qubit Clifford / Pauli   (H, X, Y, Z, S, S+)
-//   0x10-0x1F  single-qubit rotation           (RX, RY, RZ, T, T+)
-//   0x20-0x2F  two-qubit                       (CX, CZ, SWAP)
-//   0x30-0x5F  free
-//   0x60-0x6F  measurement and system          (MEASURE, resume, ...)
+//   0x01-0x5F  unitary gates          (H, X, RZ, CX, ...)
+//   0x60-0x6F  measurement and system (MEASURE, resume, ...)
 //   0x70-0x7F  free
 //
-// 0x00 is not allocatable: non-Single classes emit it, so a 0x00 Single gate is
-// ambiguous downstream.
+// GateIDs are unique across all classes: the dispatcher reads elem3[31:25] as a
+// bare 7-bit word with no funct3, so a GateID must stand on its own. 0x00 is not
+// allocatable -- non-Single classes emit it, so a 0x00 Single gate is ambiguous
+// downstream.
 //
-// A new gate takes the next free value in its band.
+// Only the system band earns a range: the control electronics acts on the bare
+// GateID for those ops (it exact-matches MEASURE at 0x68 to raise the pause/resume
+// handshake), so they must stay recognizable without funct3.
 //===----------------------------------------------------------------------===//
 
 foreach g = QVAllGates in {
@@ -86,9 +88,6 @@ foreach g = QVSingleGates in {
 foreach g = QVPairGates in {
   assert !eq(g.InstClass, "Pair"),
          g.Mnemonic # " is listed in QVPairGates but declared " # g.InstClass;
-
-  assert !and(!ge(!cast<int>(g.GateID), 0x20), !le(!cast<int>(g.GateID), 0x2F)),
-         "two-qubit gate " # g.Mnemonic # " must take a GateID in 0x20-0x2F";
 }
 
 // The vector core compares funct7 against 7'h68 to raise the measure
