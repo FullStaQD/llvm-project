@@ -36,10 +36,10 @@ class QVGate<string suffix, string mnemonic, bits<7> gateID, QVClass instClass> 
 
 // The GateIDs follow the allocation rules at the end of this file. 0x68 is
 // fixed by the hardware.
-def Gate_H  : QVGate<"H",  "qv.h",  0b0001000, QVSingle>;
-def Gate_X  : QVGate<"X",  "qv.x",  0b0001001, QVSingle>;
+def Gate_H  : QVGate<"H",  "qv.h",  0b0000001, QVSingle>;
+def Gate_X  : QVGate<"X",  "qv.x",  0b0000010, QVSingle>;
 def Gate_MZ : QVGate<"MZ", "qv.mz", 0b1101000, QVSingle>;
-def Gate_CX : QVGate<"CX", "qv.cx", 0b0100000, QVPair>;
+def Gate_CX : QVGate<"CX", "qv.cx", 0b0000011, QVPair>;
 
 // RISCVInstrInfoXQV.td iterates these to build the instructions, pseudos and
 // selection patterns. TableGen cannot enumerate the records of a class, so a new
@@ -50,24 +50,21 @@ defvar QVPairGates   = [Gate_CX];
 defvar QVAllGates = !listconcat(QVSingleGates, QVPairGates);
 
 //===----------------------------------------------------------------------===//
-// GateID allocation rules, checked by the assertions below.
+// GateID allocation, checked by the assertions below.
 //
-// funct3 already tells the decoder a gate's class (Single / Pair / Rot), so the
-// unitary GateIDs need no family structure of their own: they are just unique
-// values assigned from 0x01 up.
+// funct3 already gives the class (Single / Pair / Rot), so GateIDs just need
+// to be unique, assigned from 0x01 up:
 //
 //   0x01-0x5F  unitary gates          (H, X, RZ, CX, ...)
 //   0x60-0x6F  measurement and system (MEASURE, resume, ...)
 //   0x70-0x7F  free
 //
-// GateIDs are unique across all classes: the dispatcher reads elem3[31:25] as a
-// bare 7-bit word with no funct3, so a GateID must stand on its own. 0x00 is not
-// allocatable -- non-Single classes emit it, so a 0x00 Single gate is ambiguous
-// downstream.
+// GateIDs must be unique across all classes, not just within one: the
+// dispatcher reads elem3[31:25] as a bare 7-bit word with no funct3. 0x00 is
+// reserved because non-Single classes emit it there.
 //
-// Only the system band earns a range: the control electronics acts on the bare
-// GateID for those ops (it exact-matches MEASURE at 0x68 to raise the pause/resume
-// handshake), so they must stay recognizable without funct3.
+// The system band gets a dedicated range because those GateIDs are matched
+// on directly by hardware without funct3 (e.g. MEASURE at 0x68).
 //===----------------------------------------------------------------------===//
 
 foreach g = QVAllGates in {
