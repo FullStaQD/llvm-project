@@ -11,7 +11,6 @@
 //===----------------------------------------------------------------------===//
 
 // Custom list of supported VTypeInfo records for QV instructions.
-// SEW=8 with ELEN=32 (zve32x) requires LMUL >= SEW/ELEN = mf4, so mf8 is excluded.
 defvar SupportedQVVTypes = [VI8MF4, VI8MF2, VI8M1, VI8M2, VI8M4, VI8M8];
 
 // QV.SINGLE — Single-Qubit Gate

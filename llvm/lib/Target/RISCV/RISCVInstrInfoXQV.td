@@ -15,12 +15,6 @@ include "RISCVInstrFormatsXQV.td"
 
 let Predicates = [HasVendorXQV] in {
 
-foreach g = QVSingleGates in
-  def "QV_" # g.Suffix : RVInstQVSingle<g.GateID, g.Mnemonic>;
-
-foreach g = QVPairGates in
-  def "QV_" # g.Suffix : RVInstQVPair<g.GateID, g.Mnemonic>;
-
 // Pseudos for VSETVLI insertion and LMUL handling
 multiclass RVPseudoQVSingle {
   foreach m = MxList in {
@@ -52,12 +46,6 @@ multiclass RVPseudoQVPair {
   }
 }
 
-foreach g = QVSingleGates in
-  defm "PseudoQV_" # g.Suffix : RVPseudoQVSingle;
-
-foreach g = QVPairGates in
-  defm "PseudoQV_" # g.Suffix : RVPseudoQVPair;
-
 // Patterns to match the intrinsics to the Pseudos
 multiclass RVPatQVSingle<string intrinsic, string inst> {
   foreach vti = SupportedQVVTypes in {
@@ -84,9 +72,15 @@ multiclass RVPatQVPair<string intrinsic, string inst> {
   }
 }
 
-foreach g = QVSingleGates in
+foreach g = QVSingleGates in {
+  def "QV_" # g.Suffix : RVInstQVSingle<g.GateID, g.Mnemonic>;
+  defm "PseudoQV_" # g.Suffix : RVPseudoQVSingle;
   defm : RVPatQVSingle<g.IntrinsicRecord, "PseudoQV_" # g.Suffix>;
+}
 
-foreach g = QVPairGates in
+foreach g = QVPairGates in {
+  def "QV_" # g.Suffix : RVInstQVPair<g.GateID, g.Mnemonic>;
+  defm "PseudoQV_" # g.Suffix : RVPseudoQVPair;
   defm : RVPatQVPair<g.IntrinsicRecord, "PseudoQV_" # g.Suffix>;
+}
 }

@@ -19,11 +19,6 @@ class QVClass<string name, bits<3> funct3> {
   bits<3> Funct3 = funct3;
 }
 
-def QVSingle : QVClass<"Single", 0b000>;
-def QVPair   : QVClass<"Pair",   0b001>;
-def QVRotG   : QVClass<"RotG",   0b010>;
-def QVRotV   : QVClass<"RotV",   0b011>;
-
 // `suffix` names the records generated for this gate (QV_<suffix>,
 // PseudoQV_<suffix>); everything else is derived from the mnemonic.
 class QVGate<string suffix, string mnemonic, bits<7> gateID, QVClass instClass> {
@@ -34,6 +29,12 @@ class QVGate<string suffix, string mnemonic, bits<7> gateID, QVClass instClass> 
   string InstClass       = instClass.Name;
 }
 
+// Gate classes for the QV extension.
+def QVSingle : QVClass<"Single", 0b000>;
+def QVPair   : QVClass<"Pair",   0b001>;
+def QVRotG   : QVClass<"RotG",   0b010>;
+def QVRotV   : QVClass<"RotV",   0b011>;
+
 // GateIDs match the HiSEP-Q hardware (H = 7'h64, CX = 7'h66, MEASURE = 7'h68).
 // X has no fixed GateID in HiSEP-Q yet; its value here is a placeholder.
 def Gate_H  : QVGate<"H",  "qv.h",  0b1100100, QVSingle>;
@@ -42,9 +43,6 @@ def Gate_MZ : QVGate<"MZ", "qv.mz", 0b1101000, QVSingle>;
 def Gate_CX : QVGate<"CX", "qv.cx", 0b1100110, QVPair>;
 
 // RISCVInstrInfoXQV.td iterates these to build the instructions, pseudos and
-// selection patterns. TableGen cannot enumerate the records of a class, so a new
-// gate must be listed here as well as defined above.
+// selection patterns. A new gate must be listed here as well as defined above.
 defvar QVSingleGates = [Gate_H, Gate_X, Gate_MZ];
 defvar QVPairGates   = [Gate_CX];
-
-defvar QVAllGates = !listconcat(QVSingleGates, QVPairGates);
