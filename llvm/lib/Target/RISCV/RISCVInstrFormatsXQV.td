@@ -19,7 +19,7 @@ defvar SupportedQVVTypes = [VI8MF4, VI8MF2, VI8M1, VI8M2, VI8M4, VI8M8];
 // elem2 channel (e.g., as a software tag or timestamp).
 // 31       25   24    20   19    15   14  12   11     7   6     0
 // +---------+----------+----------+--------+----------+---------+
-// |  GateID |   rs2    |  vs1 (S) | 000(S) | Block_imm| 0001011 |
+// |  GateID |   rs2    |  vs1 (S) | 000(S) | Block_imm| CUSTOM_0|
 // +---------+----------+----------+--------+----------+---------+
 
 class RVInstQVSingle<bits<7> gateid, string opcodestr>
@@ -52,7 +52,7 @@ class RVInstQVSingle<bits<7> gateid, string opcodestr>
 // and vs1 (target).
 // 31       25   24    20   19    15   14  12   11     7   6     0
 // +---------+----------+----------+--------+----------+---------+
-// |  GateID | vs2(src) | vs1(tgt) | 001(P) | Block_imm| 0001011 |
+// |  GateID | vs2(src) | vs1(tgt) | 001(P) | Block_imm| CUSTOM_0|
 // +---------+----------+----------+--------+----------+---------+
 
 class RVInstQVPair<bits<7> gateid, string opcodestr>
