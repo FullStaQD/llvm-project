@@ -125,16 +125,11 @@ bool indexBoundsRaisable(scf::ForOp op) {
 /// `value` unchanged.
 static Value lookThroughIndexCastToIndex(Value value) {
   Operation *defOp = value.getDefiningOp();
-  if (defOp == nullptr) {
+  if (!isa_and_present<arith::IndexCastOp, arith::IndexCastUIOp>(defOp))
     return value;
-  }
-  if (!isa<arith::IndexCastOp, arith::IndexCastUIOp>(defOp)) {
-    return value;
-  }
   Value in = defOp->getOperand(0);
-  if (!in.getType().isIndex()) {
+  if (!in.getType().isIndex())
     return value;
-  }
   return in;
 }
 
@@ -160,42 +155,38 @@ static bool intBoundsRaisable(scf::ForOp op, IntegerType intType) {
   // Lossless under signed index: sign-extend needs width <= indexWidth;
   // zero-extend (unsigned) needs a spare sign bit, i.e. width < indexWidth.
   uint64_t requiredWidth = intType.getWidth() + (op.getUnsignedCmp() ? 1 : 0);
-  if (requiredWidth > indexWidth) {
+  if (requiredWidth > indexWidth)
     return false;
-  }
 
   Region *scope = affine::getAffineScope(op);
-  if (scope == nullptr) {
+  if (scope == nullptr)
     return false;
-  }
-  // The affine.for we create will live in the same region as the scf.for, so
-  // bound operands must be legal affine dims/symbols *there*.
+
   Region *parentRegion = op->getParentRegion();
 
   auto boundRaisable = [&](Value bound) {
-    // Case 1: look through a cast this pass (or an equivalent) inserted.
+    // Case 1: bound is an index in disguise: We can properly check for
+    // dim/symbol validity.
     if (Value underlying = lookThroughIndexCastToIndex(bound);
         underlying != bound) {
       // TODO: Here one could look for min/max patterns again.
       return affine::isValidDim(underlying, parentRegion) ||
              affine::isValidSymbol(underlying, parentRegion);
     }
-    // Case 2: a foldable constant can be re-materialized as an index constant.
+
+    // Case 2: bound is a constant and can be replaced with an index constant.
     Attribute cstAttr;
-    if (matchPattern(bound, m_Constant(&cstAttr))) {
+    if (matchPattern(bound, m_Constant(&cstAttr)))
       return true;
-    }
-    // Case 3: a genuine integer value needs a hoisted cast at the affine scope.
+
+    // Case 3: a genuine non-index integer value needs a hoisted cast at the
+    // affine scope, so must be defined at the top level.
     return affine::isTopLevelValue(bound, scope);
   };
 
   return boundRaisable(op.getLowerBound()) &&
          boundRaisable(op.getUpperBound()) && boundRaisable(op.getStep());
 }
-
-//===----------------------------------------------------------------------===//
-// ForOpRewrite implementation
-//===----------------------------------------------------------------------===//
 
 [[nodiscard]] bool ForOpRewrite::canRaiseToAffine(scf::ForOp op) const {
   Type type = op.getInductionVar().getType();
@@ -370,24 +361,15 @@ void ForOpRewrite::castBoundsToIndex(scf::ForOp loop,
   // The affine scope, used as the insertion point for casts that must be
   // hoisted to become valid affine symbols (case 3 below).
   Region *scope = affine::getAffineScope(loop);
-  Operation *anchor = loop;
-  while (anchor->getParentRegion() != scope)
-    anchor = anchor->getParentOp();
+  Operation *anchor = scope->findAncestorOpInRegion(*loop);
 
-  // Materialize an `index`-typed version of `bound` suitable for use as an
-  // affine operand at the loop's location. There are three cases (mirroring
-  // `intBoundsRaisable`):
-  //   1. `bound` is an index_cast of an `index` value: reuse that input.
-  //   2. `bound` is a constant: materialize an equivalent `index` constant
-  //      right before the loop.
-  //   3. otherwise: hoist a cast to the top level of the affine scope.
-  auto materializeIndexBound = [&](Value bound) -> Value {
+  auto createIndexBound = [&](Value bound) -> Value {
     // Case 1: reuse the underlying index value directly.
     if (Value underlying = lookThroughIndexCastToIndex(bound);
         underlying != bound) {
       return underlying;
     }
-    // Case 2: re-materialize a constant as an index constant.
+    // Case 2: constant int -> constant index
     Attribute cstAttr;
     if (matchPattern(bound, m_Constant(&cstAttr))) {
       rewriter.setInsertionPoint(loop);
@@ -400,9 +382,9 @@ void ForOpRewrite::castBoundsToIndex(scf::ForOp loop,
     return createIndexCast(rewriter.getIndexType(), bound);
   };
 
-  Value newLb = materializeIndexBound(lb);
-  Value newUb = materializeIndexBound(ub);
-  Value newStep = materializeIndexBound(step);
+  Value newLb = createIndexBound(lb);
+  Value newUb = createIndexBound(ub);
+  Value newStep = createIndexBound(step);
 
   rewriter.modifyOpInPlace(loop, [&] {
     loop.setLowerBound(newLb);
