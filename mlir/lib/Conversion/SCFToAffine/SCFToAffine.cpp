@@ -102,6 +102,8 @@ private:
                                  PatternRewriter &rewriter) const;
 };
 
+static bool isRaisableMinMax(Operation *op);
+
 static bool areValidAffineMapOperands(AffineMap map, ValueRange operands,
                                       Region *scope) {
   assert(map.getNumInputs() == operands.size() &&
@@ -243,6 +245,14 @@ static bool intBoundsRaisable(scf::ForOp op, IntegerType intType) {
 
 LogicalResult ForOpRewrite::matchAndRewrite(scf::ForOp op,
                                             PatternRewriter &rewriter) const {
+
+  if (isRaisableMinMax(op.getLowerBound().getDefiningOp()) ||
+      isRaisableMinMax(op.getUpperBound().getDefiningOp())) {
+    // Defer raising of the for loop until bounds have been raised.
+    return rewriter.notifyMatchFailure(
+        op, "bound will be raised to affine.max/affine.min first");
+  }
+
   if (!canRaiseToAffine(op)) {
     return rewriter.notifyMatchFailure(op, "cannot raise scf op to affine");
   }
@@ -497,19 +507,18 @@ static Value materializeIndexOperand(Value value, Operation *user,
                                     rewriter.getIndexType(), value);
 }
 
-/// Raise a binary `arith.maxsi`/`arith.minsi` to `affine.max`/`affine.min`
-/// when both operands are (or can losslessly be cast to) legal affine
-/// dims/symbols. This is intentionally *not* done for `arith.maxui`/
-/// `arith.minui`: `affine.max`/`affine.min` evaluate their affine
-/// expressions as signed integers, so raising an unsigned comparison would
-/// change semantics for operands that are negative as signed values.
-///
-/// Raising these standalone -- not just when they are already an `scf.for`
-/// bound -- matters for non-rectangular loop nests: a bound that depends on
-/// an enclosing loop's induction variable only becomes raisable as an
-/// `scf.for` bound once it is an actual `affine.max`/`affine.min` (see
-/// `indexBoundsRaisable` / `intBoundsRaisable` above, which special-case
-/// those op kinds).
+static bool isRaisableMinMax(Operation *op) {
+  if (!isa_and_present<arith::MaxSIOp, arith::MinSIOp>(op))
+    return false;
+
+  Region *scope = affine::getAffineScope(op);
+  if (!scope)
+    return false;
+
+  return getRaisableIndexOperand(op->getOperand(0), op, scope) &&
+         getRaisableIndexOperand(op->getOperand(1), op, scope);
+}
+
 template <typename ArithOp, typename AffineOp>
 struct MinMaxOpRewrite : public OpRewritePattern<ArithOp> {
   using OpRewritePattern<ArithOp>::OpRewritePattern;
@@ -531,10 +540,6 @@ struct MinMaxOpRewrite : public OpRewritePattern<ArithOp> {
           op, "rhs is not raisable to an affine dim/symbol");
     }
 
-    // From here on the rewrite is known to succeed, so the operands may be
-    // cast to `index`. Categorize each of them as a dim or a symbol,
-    // preferring symbol (a strict superset of what's legal as a dim).
-    // TODO: Or should this be left to canonicalization?
     SmallVector<Value> dimOperands, symOperands;
     SmallVector<AffineExpr> exprs;
     for (Value operand : {lhs, rhs}) {
@@ -587,8 +592,8 @@ void SCFToAffinePass::runOnOperation() {
 //===----------------------------------------------------------------------===//
 
 void mlir::populateSCFToAffineConversionPatterns(RewritePatternSet &patterns) {
-  patterns.add<ForOpRewrite>(patterns.getContext());
   patterns.add<MinMaxOpRewrite<arith::MaxSIOp, affine::AffineMaxOp>,
                MinMaxOpRewrite<arith::MinSIOp, affine::AffineMinOp>>(
       patterns.getContext());
+  patterns.add<ForOpRewrite>(patterns.getContext());
 }
