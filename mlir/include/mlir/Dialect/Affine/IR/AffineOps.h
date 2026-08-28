@@ -43,6 +43,11 @@ bool isTopLevelValue(Value value);
 /// uses in that region.
 bool isTopLevelValue(Value value, Region *region);
 
+/// A utility function to check if a value is defined at the top level of
+/// `region`, is an argument of `region`, or is defined above `region` up to
+/// an `IsolatedFromAbove` boundary.
+bool isTopLevelValueOrAbove(Value value, Region *region);
+
 /// Returns the closest region enclosing `op` that is held by an operation with
 /// trait `AffineScope`; `nullptr` if there is no such region.
 Region *getAffineScope(Operation *op);

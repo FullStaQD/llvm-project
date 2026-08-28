@@ -55,9 +55,8 @@ func.func @nested_loop(%arg0: memref<?x?xi32>, %ub1: index, %ub2: index) {
 // CHECK-SAME:  %[[LB:.*]]: i32, %[[UB:.*]]: i32
 // CHECK:         %[[LB_IDX:.*]] = arith.index_cast %[[LB]] : i32 to index
 // CHECK:         %[[UB_IDX:.*]] = arith.index_cast %[[UB]] : i32 to index
-// CHECK:         affine.for %[[IV:.*]] = 0 to #{{.*}}%[[LB_IDX]]{{.*}}%[[UB_IDX]]
-// CHECK:           %[[IDX:.*]] = affine.apply #{{.*}}%[[LB_IDX]]{{.*}}%[[IV]]
-// CHECK:           %[[IV_I32:.*]] = arith.index_cast %[[IDX]] : index to i32
+// CHECK:         affine.for %[[IV:.*]] = %[[LB_IDX]] to %[[UB_IDX]]
+// CHECK:           %[[IV_I32:.*]] = arith.index_cast %[[IV]] : index to i32
 // CHECK:           func.call @some_func(%[[IV_I32]])
 
 func.func private @some_func(%arg: i32)
@@ -98,21 +97,42 @@ func.func @index_cast_unsigned(%lb: i32, %ub: i32) {
 // CHECK:           %[[UB1_IDX:.*]] = arith.index_cast %[[UB1]] : i16 to index
 // CHECK:           %[[UB2_IDX:.*]] = arith.index_cast %[[UB2]] : i16 to index
 // CHECK:           affine.for %[[I_NEW:.*]] = 0 to %[[UB1_IDX]] {
-// CHECK:             %[[I_OLD_IDX:.*]] = affine.apply #{{.*}}%[[I_NEW]]
-// CHECK:             %[[I_OLD:.*]] = arith.index_cast %[[I_OLD_IDX]] : index to i16
+// CHECK:             %[[I_OLD:.*]] = arith.index_cast %[[I_NEW]] : index to i16
 // CHECK:             affine.for %[[J_NEW:.*]] = 0 to %[[UB2_IDX]] {
-// CHECK:               %[[J_OLD_IDX:.*]] = affine.apply #{{.*}}%[[J_NEW]]
-// CHECK:               %[[J_OLD:.*]] = arith.index_cast %[[J_OLD_IDX]] : index to i16
+// CHECK:               %[[J_OLD:.*]] = arith.index_cast %[[J_NEW]] : index to i16
 // CHECK:               func.call @some_func(%[[I_OLD]], %[[J_OLD]]) : (i16, i16) -> ()
 
 func.func private @some_func(%i: i16, %j: i16)
 
 func.func @nested_loop_index_cast(%ub1: i16, %ub2: i16) {
-  %c0_i32 = arith.constant 0 : i32
   %c0 = arith.constant 0 : i16
   %c1 = arith.constant 1 : i16
   scf.for %i = %c0 to %ub1 step %c1 : i16{
     scf.for %j = %c0 to %ub2 step %c1 : i16 {
+      func.call @some_func(%i, %j) : (i16, i16) -> ()
+    }
+  }
+  return
+}
+
+// -----
+
+// CHECK-LABEL:   func.func @nested_nonrect_loop_index_cast(
+// CHECK-SAME:      %[[UB1:.*]]: i16) {
+// CHECK:           %[[UB1_IDX:.*]] = arith.index_cast %[[UB1]] : i16 to index
+// CHECK:           affine.for %[[I_NEW:.*]] = 0 to %[[UB1_IDX]] {
+// CHECK:             %[[I_OLD:.*]] = arith.index_cast %[[I_NEW]] : index to i16
+// CHECK:             affine.for %[[J_NEW:.*]] = 0 to #{{.*}}%[[I_NEW]]{{.*}} {
+// CHECK:               %[[J_OLD:.*]] = arith.index_cast %[[J_NEW]] : index to i16
+// CHECK:               func.call @some_func(%[[I_OLD]], %[[J_OLD]]) : (i16, i16) -> ()
+
+func.func private @some_func(%i: i16, %j: i16)
+
+func.func @nested_nonrect_loop_index_cast(%ub1: i16) {
+  %c0 = arith.constant 0 : i16
+  %c1 = arith.constant 1 : i16
+  scf.for %i = %c0 to %ub1 step %c1 : i16{
+    scf.for %j = %c0 to %i step %c1 : i16 {
       func.call @some_func(%i, %j) : (i16, i16) -> ()
     }
   }
@@ -367,4 +387,450 @@ module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<index, 32>>} {
     }
     return
   }
+}
+
+// -----
+
+//===----------------------------------------------------------------------===//
+// Raising `arith.maxsi` / `arith.minsi` to `affine.max` / `affine.min`.
+//===----------------------------------------------------------------------===//
+
+// CHECK: #[[$MAP:.+]] = affine_map<()[s0, s1] -> (s0, s1)>
+// CHECK-LABEL: @basic_max_symbols
+// CHECK-SAME:  %[[A:.*]]: index, %[[B:.*]]: index
+// CHECK:         %{{.*}} = affine.max #[[$MAP]]()[%[[A]], %[[B]]]
+// CHECK-NOT:     arith.maxsi
+func.func @basic_max_symbols(%a: index, %b: index) -> index {
+  %r = arith.maxsi %a, %b : index
+  return %r : index
+}
+
+// -----
+
+// CHECK: #[[$MAP:.+]] = affine_map<()[s0, s1] -> (s0, s1)>
+// CHECK-LABEL: @basic_min_symbols
+// CHECK-SAME:  %[[A:.*]]: index, %[[B:.*]]: index
+// CHECK:         %{{.*}} = affine.min #[[$MAP]]()[%[[A]], %[[B]]]
+// CHECK-NOT:     arith.minsi
+func.func @basic_min_symbols(%a: index, %b: index) -> index {
+  %r = arith.minsi %a, %b : index
+  return %r : index
+}
+
+// -----
+
+// A mix of a dimension (the enclosing loop's induction variable) and a
+// symbol (a top-level value) is categorized correctly in the resulting map.
+
+// CHECK: #[[$MAP:.+]] = affine_map<(d0)[s0] -> (d0, s0)>
+// CHECK-LABEL: @max_with_iv_dim_and_symbol
+// CHECK-SAME:  %[[UB:.*]]: index, %[[K:.*]]: index
+// CHECK:         affine.for %[[I:.*]] = 0 to %[[UB]] {
+// CHECK:           %{{.*}} = affine.max #[[$MAP]](%[[I]])[%[[K]]]
+func.func private @use(%x: index)
+
+func.func @max_with_iv_dim_and_symbol(%ub: index, %k: index) {
+  %c0 = arith.constant 0 : index
+  %c1 = arith.constant 1 : index
+  scf.for %i = %c0 to %ub step %c1 {
+    %m = arith.maxsi %i, %k : index
+    func.call @use(%m) : (index) -> ()
+  }
+  return
+}
+
+// -----
+
+// Not raised: `%acc` is an `scf.for` iter_arg, neither a top-level value nor
+// an affine induction variable, so it is not a valid affine dim/symbol.
+
+// CHECK-LABEL: @max_not_raised_iter_arg
+// CHECK:         arith.maxsi
+// CHECK-NOT:     affine.max
+func.func @max_not_raised_iter_arg(%init: index, %ub: index, %k: index) -> index {
+  %c0 = arith.constant 0 : index
+  %c1 = arith.constant 1 : index
+  // TODO: is the for loop raised?
+  %r = scf.for %i = %c0 to %ub step %c1 iter_args(%acc = %init) -> (index) {
+    %m = arith.maxsi %acc, %k : index
+    scf.yield %m : index
+  }
+  return %r : index
+}
+
+// -----
+
+// `arith.maxui` / `arith.minui` are *not* raised: `affine.max` / `affine.min`
+// evaluate their affine expressions as signed integers, so raising an
+// unsigned comparison would change semantics for operands that are negative
+// as signed values.
+// TODO: Support raising unsigned.
+
+// CHECK-LABEL: @maxui_not_raised
+// CHECK:         arith.maxui
+// CHECK-NOT:     affine.max
+func.func @maxui_not_raised(%a: index, %b: index) -> index {
+  %r = arith.maxui %a, %b : index
+  return %r : index
+}
+
+// CHECK-LABEL: @minui_not_raised
+// CHECK:         arith.minui
+// CHECK-NOT:     affine.min
+func.func @minui_not_raised(%a: index, %b: index) -> index {
+  %r = arith.minui %a, %b : index
+  return %r : index
+}
+
+// -----
+
+// Integer (non-index) operands are cast to `index` first, mirroring the
+// bound-casting behavior used for `scf.for` bounds: a cast per operand, the
+// max/min computed in `index`, and the result cast back to the original
+// type.
+
+// CHECK: #[[$MAP:.+]] = affine_map<()[s0, s1] -> (s0, s1)>
+// CHECK-LABEL: @max_index_cast
+// CHECK-SAME:  %[[A:.*]]: i32, %[[B:.*]]: i32
+// CHECK:         %[[A_IDX:.*]] = arith.index_cast %[[A]] : i32 to index
+// CHECK:         %[[B_IDX:.*]] = arith.index_cast %[[B]] : i32 to index
+// CHECK:         %[[R_IDX:.*]] = affine.max #[[$MAP]]()[%[[A_IDX]], %[[B_IDX]]]
+// CHECK:         %[[R:.*]] = arith.index_cast %[[R_IDX]] : index to i32
+// CHECK:         return %[[R]]
+func.func @max_index_cast(%a: i32, %b: i32) -> i32 {
+  %r = arith.maxsi %a, %b : i32
+  return %r : i32
+}
+
+// -----
+
+// Casts for the operands of a min/max that is not itself at the top level of
+// the affine scope (here: inside a loop) are hoisted there, same as
+// loop-bound casts.
+
+// CHECK-LABEL:   func.func @min_index_cast_hoisted_out_of_loop(
+// CHECK-SAME:      %[[A:.*]]: i32, %[[B:.*]]: i32, %[[UB:.*]]: index) {
+// CHECK:           %[[A_IDX:.*]] = arith.index_cast %[[A]] : i32 to index
+// CHECK:           %[[B_IDX:.*]] = arith.index_cast %[[B]] : i32 to index
+// CHECK:           affine.for %{{.*}} = 0 to %[[UB]] {
+// CHECK:             %{{.*}} = affine.min #{{.*}}()[%[[A_IDX]], %[[B_IDX]]]
+func.func private @use_i32(%x: i32)
+
+func.func @min_index_cast_hoisted_out_of_loop(%a: i32, %b: i32, %ub: index) {
+  %c0 = arith.constant 0 : index
+  %c1 = arith.constant 1 : index
+  scf.for %i = %c0 to %ub step %c1 {
+    %m = arith.minsi %a, %b : i32
+    func.call @use_i32(%m) : (i32) -> ()
+  }
+  return
+}
+
+// -----
+
+// Not raised: the index-cast would not be lossless (index pinned to 32 bits,
+// operands are i64). Raised: same-width signed cast is lossless (index
+// pinned to 32 bits, operands are i32).
+
+// CHECK-LABEL: @maxsi_wider_than_index_not_raised
+// CHECK:         arith.maxsi
+// CHECK-NOT:     affine.max
+// CHECK-LABEL: @maxsi_signed_same_width_raised
+// CHECK:         affine.max
+// CHECK-NOT:     arith.maxsi
+module attributes {dlti.dl_spec = #dlti.dl_spec<#dlti.dl_entry<index, 32>>} {
+  func.func @maxsi_wider_than_index_not_raised(%a: i64, %b: i64) -> i64 {
+    %r = arith.maxsi %a, %b : i64
+    return %r : i64
+  }
+
+  func.func @maxsi_signed_same_width_raised(%a: i32, %b: i32) -> i32 {
+    %r = arith.maxsi %a, %b : i32
+    return %r : i32
+  }
+}
+
+// -----
+
+// Interaction with `scf.for` raising: a constant-step loop whose (integer,
+// non-index) lower bound is `arith.maxsi` is raised end-to-end, with the
+// resulting `affine.max` inlined into the loop's lower bound map and the
+// necessary index-casts on the operands.
+
+// CHECK: #[[$LB_MAP:.+]] = affine_map<()[s0, s1] -> (s0, s1)>
+// CHECK-LABEL:   func.func @for_lb_maxsi_index_cast_constant_step(
+// CHECK-SAME:      %[[A:.*]]: i32, %[[B:.*]]: i32, %[[UB:.*]]: i32) {
+// CHECK-DAG:       %[[A_IDX:.*]] = arith.index_cast %[[A]] : i32 to index
+// CHECK-DAG:       %[[B_IDX:.*]] = arith.index_cast %[[B]] : i32 to index
+// CHECK-DAG:       %[[UB_IDX:.*]] = arith.index_cast %[[UB]] : i32 to index
+// CHECK:           affine.for %[[IV:.*]] = max #[[$LB_MAP]]()[%[[A_IDX]], %[[B_IDX]]] to %[[UB_IDX]] {
+// CHECK:             %[[IV_I32:.*]] = arith.index_cast %[[IV]] : index to i32
+// CHECK:             func.call @some_func(%[[IV_I32]])
+// CHECK-NOT:       scf.for
+// CHECK-NOT:       arith.maxsi
+
+func.func private @some_func(%arg: i32)
+
+func.func @for_lb_maxsi_index_cast_constant_step(%a: i32, %b: i32, %ub: i32) {
+  %lb = arith.maxsi %a, %b : i32
+  %step = arith.constant 1 : i32
+  scf.for %i = %lb to %ub step %step : i32 {
+    func.call @some_func(%i) : (i32) -> ()
+  }
+  return
+}
+
+// -----
+
+// Interaction with `scf.for` raising: a constant-step loop whose (index)
+// upper bound is `arith.minsi` of two symbols is raised end-to-end, with the
+// resulting `affine.min` inlined into the loop's upper bound map.
+
+// CHECK: #[[$UB_MAP:.+]] = affine_map<()[s0, s1] -> (s0, s1)>
+// CHECK-LABEL:   func.func @for_ub_minsi_constant_step(
+// CHECK-SAME:      %[[K:.*]]: index, %[[N:.*]]: index) {
+// CHECK:           affine.for %{{.*}} = 0 to min #[[$UB_MAP]]()[%[[K]], %[[N]]] {
+// CHECK:             func.call @some_func
+// CHECK-NOT:       scf.for
+// CHECK-NOT:       arith.minsi
+// CHECK-NOT:       affine.min
+
+func.func private @some_func(%i: index)
+
+func.func @for_ub_minsi_constant_step(%k: index, %n: index) {
+  %c0 = arith.constant 0 : index
+  %c1 = arith.constant 1 : index
+  %ub = arith.minsi %k, %n : index
+  scf.for %i = %c0 to %ub step %c1 {
+    func.call @some_func(%i) : (index) -> ()
+  }
+  return
+}
+
+// -----
+
+// Interaction with `scf.for` raising, dynamic step: mirrors the existing
+// `max_lb_symbol_dynamic_step` case above, but the `affine.max` is
+// introduced by raising an `arith.maxsi` instead of being hand-written.
+//
+// Here the `affine.max` legitimately stays outside the bound maps: a dynamic
+// step forces the loop to be normalized to `0 .. ceil((ub - lb) / step)`, and
+// a *multi-result* lower bound cannot be subtracted inside an affine map.
+
+// CHECK: #[[$LB_MAP:.+]] = affine_map<()[s0, s1] -> (s0, s1)>
+// CHECK: #[[$UB_MAP:.+]] = affine_map<()[s0, s1] -> ((s0 - s1 + 99) floordiv s0)>
+// CHECK: #[[$IV_MAP:.+]] = affine_map<(d0, d1)[s0] -> (d0 + d1 * s0)>
+// CHECK-LABEL:   func.func @max_lb_symbol_dynamic_step_from_arith(
+// CHECK-SAME:      %[[STEP:.*]]: index, %[[K:.*]]: index, %[[N:.*]]: index) {
+// CHECK:           %[[LB:.*]] = affine.max #[[$LB_MAP]]()[%[[K]], %[[N]]]
+// CHECK:           affine.for %[[NEW_I:.*]] = 0 to #[[$UB_MAP]]()[%[[STEP]], %[[LB]]] {
+// CHECK:             %[[OLD_I:.*]] = affine.apply #[[$IV_MAP]](%[[LB]], %[[NEW_I]])[%[[STEP]]]
+// CHECK:             func.call @some_func(%[[OLD_I]]) : (index) -> ()
+// CHECK-NOT:       scf.for
+// CHECK-NOT:       arith.maxsi
+
+func.func private @some_func(%i: index)
+
+func.func @max_lb_symbol_dynamic_step_from_arith(%step: index, %k: index, %n: index) {
+  %ub = arith.constant 100 : index
+  %lb = arith.maxsi %k, %n : index
+  scf.for %i = %lb to %ub step %step {
+    func.call @some_func(%i) : (index) -> ()
+  }
+  return
+}
+
+// -----
+
+// The `arith.maxsi` itself is still raised to `affine.max` even when the
+// surrounding (dynamic-step) `scf.for` cannot be raised because its lower
+// bound depends on a non-top-level value (the outer loop's induction
+// variable) -- mirroring `max_lb_iv_dynamic_step_not_raised` above, but
+// starting from `arith.maxsi` instead of a hand-written `affine.max`.
+
+// CHECK-LABEL: @max_lb_iv_dynamic_step_not_raised_from_arith
+// CHECK:         affine.for %[[I:.*]] = 0 to %{{.*}} {
+// CHECK:           %{{.*}} = affine.max #{{.*}}(%[[I]])[%{{.*}}]
+// CHECK:           scf.for %{{.*}} = %{{.*}} to %{{.*}} step %{{.*}}
+// CHECK-NOT:     affine.for
+
+func.func private @some_func(%i: index, %j: index)
+
+func.func @max_lb_iv_dynamic_step_not_raised_from_arith(%n: index, %ub: index, %k: index,
+                                                          %step: index) {
+  %c0 = arith.constant 0 : index
+  %c1 = arith.constant 1 : index
+  scf.for %i = %c0 to %n step %c1 {
+    %lb = arith.maxsi %i, %k : index
+    scf.for %j = %lb to %ub step %step {
+      func.call @some_func(%i, %j) : (index, index) -> ()
+    }
+  }
+  return
+}
+
+// -----
+
+// An operand defined *above* the affine scope (here: a block argument of the
+// function enclosing the `test.affine_scope`) is a legal affine symbol inside
+// the scope, so the min/max is raised. The cast is placed next to the
+// definition of the operand -- hoisting it to the top of the affine scope
+// would not make it any more legal than leaving it at the use.
+
+// CHECK-LABEL:   func.func @max_operand_defined_above_affine_scope(
+// CHECK-SAME:      %[[A:.*]]: i32, %[[B:.*]]: i32
+// CHECK:           %[[A_IDX:.*]] = arith.index_cast %[[A]] : i32 to index
+// CHECK:           %[[B_IDX:.*]] = arith.index_cast %[[B]] : i32 to index
+// CHECK:           test.affine_scope {
+// CHECK:             %{{.*}} = affine.max #{{.*}}()[%[[A_IDX]], %[[B_IDX]]]
+// CHECK-NOT:     arith.maxsi
+func.func @max_operand_defined_above_affine_scope(%a: i32, %b: i32) {
+  test.affine_scope {
+    %m = arith.maxsi %a, %b : i32
+    func.call @use_i32(%m) : (i32) -> ()
+    "test.terminator"() : () -> ()
+  }
+  return
+}
+
+func.func private @use_i32(%x: i32)
+
+// -----
+
+// Not raised: `%acc` is an `scf.for` iter_arg, so it is not a valid affine
+// symbol and no cast for it can be made legal. The raisable operand `%a` must
+// not have a cast materialized for it either: a pattern that fails to match
+// must leave the IR untouched.
+
+// CHECK-LABEL: @max_int_partially_raisable_not_rewritten
+// CHECK-NOT:     arith.index_cast
+// CHECK:         arith.maxsi
+// CHECK-NOT:     affine.max
+// CHECK-NOT:     arith.index_cast
+func.func @max_int_partially_raisable_not_rewritten(%a: i32, %init: i32, %ub: index) -> i32 {
+  %c0 = arith.constant 0 : index
+  %c1 = arith.constant 1 : index
+  %r = scf.for %i = %c0 to %ub step %c1 iter_args(%acc = %init) -> (i32) {
+    %m = arith.maxsi %a, %acc : i32
+    scf.yield %m : i32
+  }
+  return %r : i32
+}
+
+// -----
+
+// The point of raising `arith.maxsi`/`arith.minsi` is to end up with the
+// max/min *inlined into the loop's bound maps*, i.e. an
+// `affine.for %i = max ... to min ...`. That happens here because the bounds
+// depend on the enclosing loop's induction variable: an `arith.maxsi` of an
+// induction variable is not a valid affine symbol, so the inner loop can only
+// be raised after the max/min have become `affine.max`/`affine.min`.
+// See `scf-to-affine-minmax-bounds.mlir` for the cases that need `ForOpRewrite`
+// to explicitly defer to `MinMaxOpRewrite` to get there.
+
+// CHECK: #[[$MAP:.+]] = affine_map<(d0)[s0] -> (d0, s0)>
+// CHECK-LABEL:   func.func @for_max_lb_min_ub_from_iv_folded(
+// CHECK-SAME:      %[[N:.*]]: index, %[[K:.*]]: index, %[[M:.*]]: index) {
+// CHECK:           affine.for %[[I:.*]] = 0 to %[[N]] {
+// CHECK:             affine.for %{{.*}} = max #[[$MAP]](%[[I]])[%[[K]]] to min #[[$MAP]](%[[I]])[%[[M]]] {
+// CHECK-NOT:       scf.for
+// CHECK-NOT:       arith.maxsi
+// CHECK-NOT:       arith.minsi
+
+func.func private @use_2(%i: index, %j: index)
+
+func.func @for_max_lb_min_ub_from_iv_folded(%n: index, %k: index, %m: index) {
+  %c0 = arith.constant 0 : index
+  %c1 = arith.constant 1 : index
+  scf.for %i = %c0 to %n step %c1 {
+    %lb = arith.maxsi %i, %k : index
+    %ub = arith.minsi %i, %m : index
+    scf.for %j = %lb to %ub step %c1 {
+      func.call @use_2(%i, %j) : (index, index) -> ()
+    }
+  }
+  return
+}
+
+// -----
+
+// CHECK: #[[$MAP:.+]] = affine_map<()[s0, s1] -> (s0, s1)>
+// CHECK-LABEL:   func.func @for_max_lb_min_ub_symbols_folded(
+// CHECK-SAME:      %[[K:.*]]: index, %[[N:.*]]: index, %[[P:.*]]: index, %[[Q:.*]]: index) {
+// CHECK:           affine.for %{{.*}} = max #[[$MAP]]()[%[[K]], %[[N]]] to min #[[$MAP]]()[%[[P]], %[[Q]]] {
+// CHECK:             func.call @use
+// CHECK-NOT:       arith.maxsi
+// CHECK-NOT:       arith.minsi
+// CHECK-NOT:       affine.max
+// CHECK-NOT:       affine.min
+
+func.func private @use(%i: index)
+
+func.func @for_max_lb_min_ub_symbols_folded(%k: index, %n: index, %p: index, %q: index) {
+  %c1 = arith.constant 1 : index
+  %lb = arith.maxsi %k, %n : index
+  %ub = arith.minsi %p, %q : index
+  scf.for %i = %lb to %ub step %c1 {
+    func.call @use(%i) : (index) -> ()
+  }
+  return
+}
+
+// -----
+
+// Same for an integer-typed loop: the bounds are cast to `index` once and the
+// max/min inlined into the bound maps. Raising the loop first would instead
+// cast the `arith.maxsi`/`arith.minsi` results, leaving an
+// `index` -> `i32` -> `index` cast round trip behind.
+
+// CHECK: #[[$MAP:.+]] = affine_map<()[s0, s1] -> (s0, s1)>
+// CHECK-LABEL:   func.func @for_max_lb_min_ub_i32_folded(
+// CHECK-SAME:      %[[K:.*]]: i32, %[[N:.*]]: i32, %[[P:.*]]: i32, %[[Q:.*]]: i32) {
+// CHECK-DAG:       %[[K_IDX:.*]] = arith.index_cast %[[K]] : i32 to index
+// CHECK-DAG:       %[[N_IDX:.*]] = arith.index_cast %[[N]] : i32 to index
+// CHECK-DAG:       %[[P_IDX:.*]] = arith.index_cast %[[P]] : i32 to index
+// CHECK-DAG:       %[[Q_IDX:.*]] = arith.index_cast %[[Q]] : i32 to index
+// CHECK:           affine.for %[[IV:.*]] = max #[[$MAP]]()[%[[K_IDX]], %[[N_IDX]]] to min #[[$MAP]]()[%[[P_IDX]], %[[Q_IDX]]] {
+// CHECK:             %[[IV_I32:.*]] = arith.index_cast %[[IV]] : index to i32
+// CHECK:             func.call @use_i32(%[[IV_I32]])
+// CHECK-NOT:       arith.maxsi
+// CHECK-NOT:       arith.minsi
+
+func.func private @use_i32(%i: i32)
+
+func.func @for_max_lb_min_ub_i32_folded(%k: i32, %n: i32, %p: i32, %q: i32) {
+  %c1 = arith.constant 1 : i32
+  %lb = arith.maxsi %k, %n : i32
+  %ub = arith.minsi %p, %q : i32
+  scf.for %i = %lb to %ub step %c1 : i32 {
+    func.call @use_i32(%i) : (i32) -> ()
+  }
+  return
+}
+
+// -----
+
+// A nested max: the outer one is inlined into the lower bound map. Its operand
+// is the inner `affine.max`, which is `Pure` and therefore a valid affine
+// symbol, so no flattening into a single three-result map is needed for this
+// to be legal (that would be a further improvement).
+
+// CHECK: #[[$MAP:.+]] = affine_map<()[s0, s1] -> (s0, s1)>
+// CHECK-LABEL:   func.func @for_nested_max_lb_folded(
+// CHECK-SAME:      %[[K:.*]]: index, %[[N:.*]]: index, %[[P:.*]]: index, %[[UB:.*]]: index) {
+// CHECK:           %[[INNER:.*]] = affine.max #[[$MAP]]()[%[[K]], %[[N]]]
+// CHECK:           affine.for %{{.*}} = max #[[$MAP]]()[%[[INNER]], %[[P]]] to %[[UB]] {
+// CHECK:             func.call @use
+// CHECK-NOT:       arith.maxsi
+
+func.func private @use(%i: index)
+
+func.func @for_nested_max_lb_folded(%k: index, %n: index, %p: index, %ub: index) {
+  %c1 = arith.constant 1 : index
+  %0 = arith.maxsi %k, %n : index
+  %lb = arith.maxsi %0, %p : index
+  scf.for %i = %lb to %ub step %c1 {
+    func.call @use(%i) : (index) -> ()
+  }
+  return
 }

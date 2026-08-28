@@ -102,6 +102,8 @@ private:
                                  PatternRewriter &rewriter) const;
 };
 
+static bool isRaisableMinMax(Operation *op);
+
 static bool areValidAffineMapOperands(AffineMap map, ValueRange operands,
                                       Region *scope) {
   assert(map.getNumInputs() == operands.size() &&
@@ -140,11 +142,35 @@ bool indexBoundsRaisable(scf::ForOp op) {
   return lbOK && ubOK && stepOK;
 }
 
+/// If `value` is the result of an `arith.index_cast` / `arith.index_castui`
+/// whose input is of `index` type, return that input; otherwise return
+/// `value` unchanged.
+static Value lookThroughIndexCastToIndex(Value value) {
+  Operation *defOp = value.getDefiningOp();
+  if (!isa_and_present<arith::IndexCastOp, arith::IndexCastUIOp>(defOp))
+    return value;
+  Value in = defOp->getOperand(0);
+  if (!in.getType().isIndex())
+    return value;
+  return in;
+}
+
 /// Decide whether an integer-typed loop can be raised by first casting its
 /// bounds (lb, ub, step) to `index`. Requires the cast to be lossless under
-/// affine's *signed* `index` interpretation, and every bound to be available at
-/// the top level of the affine scope (so the inserted casts are valid symbols).
-bool intBoundsRaisable(scf::ForOp op, IntegerType intType) {
+/// affine's *signed* `index` interpretation, and every bound to be available
+/// as a legal affine symbol/dimension at the loop's location.
+///
+/// A bound is raisable if it falls into one of the following cases:
+///   1. It is an `arith.index_cast`/`index_castui` of an `index`-typed value
+///      that is a legal affine dimension or symbol in the loop's parent region.
+///      The cast input is reused directly, so no new cast is needed.
+///   2. It is a (foldable) constant. An equivalent `index` constant is
+///      materialized in the loop's parent region, which is a legal affine
+///      symbol everywhere.
+///   3. It is a genuine integer value defined at the top level of the affine
+///      scope, so a cast to `index` can be hoisted there and become a valid
+///      affine symbol.
+static bool intBoundsRaisable(scf::ForOp op, IntegerType intType) {
   uint64_t indexWidth = DataLayout::closest(op)
                             .getTypeSizeInBits(IndexType::get(op.getContext()))
                             .getFixedValue();
@@ -155,16 +181,60 @@ bool intBoundsRaisable(scf::ForOp op, IntegerType intType) {
     return false;
 
   Region *scope = affine::getAffineScope(op);
-  if (!scope)
+  if (scope == nullptr)
     return false;
 
-  // Being top-level implies the value is a symbol once it is casted to index.
-  return affine::isTopLevelValue(op.getLowerBound(), scope) &&
-         affine::isTopLevelValue(op.getUpperBound(), scope) &&
-         affine::isTopLevelValue(op.getStep(), scope);
+  Region *parentRegion = op->getParentRegion();
+  IntegerAttr stepConstAttr;
+  bool constStep = matchPattern(op.getStep(), m_Constant(&stepConstAttr));
+
+  auto boundRaisable = [&](Value bound) {
+    // Case 1: bound is an index in disguise: We can properly check for
+    // dim/symbol validity.
+    if (Value underlying = lookThroughIndexCastToIndex(bound);
+        underlying != bound) {
+      return affine::isValidDim(underlying, parentRegion) ||
+             affine::isValidSymbol(underlying, parentRegion);
+    }
+
+    // Case 2: bound is a constant and can be replaced with an index constant.
+    Attribute cstAttr;
+    if (matchPattern(bound, m_Constant(&cstAttr)))
+      return true;
+
+    // Case 3: a genuine non-index integer value needs a hoisted cast at the
+    // affine scope, so must be defined at the top level.
+    return affine::isTopLevelValue(bound, scope);
+  };
+
+  // A lower/upper bound that -- once looked through any index-cast -- is an
+  // `affine.max`/`affine.min` with legal map operands is also raisable,
+  // mirroring `indexBoundsRaisable`. A max lower bound additionally requires
+  // a constant step; see the comment on `indexBoundsRaisable` for why.
+  auto lbRaisable = [&](Value bound) {
+    if (boundRaisable(bound))
+      return true;
+    auto maxOp =
+        lookThroughIndexCastToIndex(bound).getDefiningOp<affine::AffineMaxOp>();
+    return maxOp && constStep &&
+           areValidAffineMapOperands(maxOp.getAffineMap(), maxOp->getOperands(),
+                                     parentRegion);
+  };
+  auto ubRaisable = [&](Value bound) {
+    if (boundRaisable(bound))
+      return true;
+    auto minOp =
+        lookThroughIndexCastToIndex(bound).getDefiningOp<affine::AffineMinOp>();
+    return minOp &&
+           areValidAffineMapOperands(minOp.getAffineMap(), minOp->getOperands(),
+                                     parentRegion);
+  };
+
+  return lbRaisable(op.getLowerBound()) && ubRaisable(op.getUpperBound()) &&
+         boundRaisable(op.getStep());
 }
 
-bool ForOpRewrite::canRaiseToAffine(scf::ForOp op) const {
+[[nodiscard]] bool ForOpRewrite::canRaiseToAffine(scf::ForOp op) const {
   Type type = op.getInductionVar().getType();
   if (isa<IndexType>(type))
     return indexBoundsRaisable(op);
@@ -175,6 +245,14 @@ bool ForOpRewrite::canRaiseToAffine(scf::ForOp op) const {
 
 LogicalResult ForOpRewrite::matchAndRewrite(scf::ForOp op,
                                             PatternRewriter &rewriter) const {
+
+  if (isRaisableMinMax(op.getLowerBound().getDefiningOp()) ||
+      isRaisableMinMax(op.getUpperBound().getDefiningOp())) {
+    // Defer raising of the for loop until bounds have been raised.
+    return rewriter.notifyMatchFailure(
+        op, "bound will be raised to affine.max/affine.min first");
+  }
+
   if (!canRaiseToAffine(op)) {
     return rewriter.notifyMatchFailure(op, "cannot raise scf op to affine");
   }
@@ -245,7 +323,7 @@ ForOpRewrite::createAffineForWithConstantStep(scf::ForOp op, int64_t step,
       affine::AffineForOp::create(rewriter, op.getLoc(), lbOperands, lbMap,
                                   ubOperands, ubMap, step, op.getInits());
 
-  return std::make_pair(affineFor, affineFor.getInductionVar());
+  return {affineFor, affineFor.getInductionVar()};
 }
 
 std::pair<affine::AffineForOp, Value>
@@ -312,7 +390,7 @@ ForOpRewrite::createAffineForWithDynamicStep(scf::ForOp op,
   auto oldIV =
       affine::AffineApplyOp::create(rewriter, op.getLoc(), ivMap, ivOperands);
 
-  return std::make_pair(affineFor, oldIV);
+  return {affineFor, oldIV};
 }
 
 void ForOpRewrite::castBoundsToIndex(scf::ForOp loop,
@@ -334,18 +412,33 @@ void ForOpRewrite::castBoundsToIndex(scf::ForOp loop,
     return arith::IndexCastOp::create(rewriter, loc, out, in);
   };
 
-  // We place the bound casts at the top level of the affine scope so that they
-  // are identified as valid affine symbols.
-
+  // The affine scope, used as the insertion point for casts that must be
+  // hoisted to become valid affine symbols (case 3 below).
   Region *scope = affine::getAffineScope(loop);
-  Operation *anchor = loop;
-  while (anchor->getParentRegion() != scope)
-    anchor = anchor->getParentOp();
-  rewriter.setInsertionPoint(anchor);
+  Operation *anchor = scope->findAncestorOpInRegion(*loop);
 
-  Value newLb = createIndexCast(rewriter.getIndexType(), lb);
-  Value newUb = createIndexCast(rewriter.getIndexType(), ub);
-  Value newStep = createIndexCast(rewriter.getIndexType(), step);
+  auto createIndexBound = [&](Value bound) -> Value {
+    // Case 1: reuse the underlying index value directly.
+    if (Value underlying = lookThroughIndexCastToIndex(bound);
+        underlying != bound) {
+      return underlying;
+    }
+    // Case 2: constant int -> constant index
+    Attribute cstAttr;
+    if (matchPattern(bound, m_Constant(&cstAttr))) {
+      rewriter.setInsertionPoint(loop);
+      return arith::ConstantOp::create(rewriter, loop.getLoc(),
+                                       rewriter.getIndexType(),
+                                       cast<TypedAttr>(cstAttr));
+    }
+    // Case 3: hoist a cast to the affine scope top level.
+    rewriter.setInsertionPoint(anchor);
+    return createIndexCast(rewriter.getIndexType(), bound);
+  };
+
+  Value newLb = createIndexBound(lb);
+  Value newUb = createIndexBound(ub);
+  Value newStep = createIndexBound(step);
 
   rewriter.modifyOpInPlace(loop, [&] {
     loop.setLowerBound(newLb);
@@ -354,7 +447,7 @@ void ForOpRewrite::castBoundsToIndex(scf::ForOp loop,
 
     Value originalIV = loop.getInductionVar();
     Value iv = loop.getBody()->insertArgument(
-        (unsigned)0, rewriter.getIndexType(), loop.getLoc());
+        static_cast<unsigned>(0), rewriter.getIndexType(), loop.getLoc());
 
     rewriter.setInsertionPointToStart(loop.getBody());
     Value castIV = createIndexCast(originalType, iv);
@@ -366,6 +459,120 @@ void ForOpRewrite::castBoundsToIndex(scf::ForOp loop,
 }
 
 //===----------------------------------------------------------------------===//
+// MinMaxOpRewrite
+//===----------------------------------------------------------------------===//
+
+static Value getRaisableIndexOperand(Value value, Operation *user,
+                                     Region *scope) {
+
+  // TODO: symbol implies dim, so dim check would suffice. double check.
+  auto isValidAffineOperand = [&](Value v) {
+    return affine::isValidSymbol(v, scope) || affine::isValidDim(v, scope);
+  };
+
+  if (value.getType().isIndex())
+    return isValidAffineOperand(value) ? value : nullptr;
+
+  auto intType = dyn_cast<IntegerType>(value.getType());
+  if (!intType)
+    return nullptr;
+
+  uint64_t indexWidth =
+      DataLayout::closest(user)
+          .getTypeSizeInBits(IndexType::get(user->getContext()))
+          .getFixedValue();
+  // Only signed (arith.maxsi/minsi) raising is supported, so a plain
+  // sign-extend suffices; no extra bit is needed as for unsigned bounds.
+  // TODO: Also support unsigned
+  if (intType.getWidth() > indexWidth)
+    return nullptr;
+
+  if (Value underlying = lookThroughIndexCastToIndex(value);
+      underlying != value) {
+    return isValidAffineOperand(underlying) ? underlying : nullptr;
+  }
+
+  return affine::isTopLevelValueOrAbove(value, scope) ? value : nullptr;
+}
+
+static Value materializeIndexOperand(Value value, Operation *user,
+                                     PatternRewriter &rewriter) {
+  if (value.getType().isIndex())
+    return value;
+
+  Operation *castPoint = value.getParentRegion()->findAncestorOpInRegion(*user);
+  OpBuilder::InsertionGuard guard(rewriter);
+  rewriter.setInsertionPoint(castPoint);
+  return arith::IndexCastOp::create(rewriter, castPoint->getLoc(),
+                                    rewriter.getIndexType(), value);
+}
+
+static bool isRaisableMinMax(Operation *op) {
+  if (!isa_and_present<arith::MaxSIOp, arith::MinSIOp>(op))
+    return false;
+
+  Region *scope = affine::getAffineScope(op);
+  if (!scope)
+    return false;
+
+  return getRaisableIndexOperand(op->getOperand(0), op, scope) &&
+         getRaisableIndexOperand(op->getOperand(1), op, scope);
+}
+
+template <typename ArithOp, typename AffineOp>
+struct MinMaxOpRewrite : public OpRewritePattern<ArithOp> {
+  using OpRewritePattern<ArithOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(ArithOp op,
+                                PatternRewriter &rewriter) const override {
+    Region *scope = affine::getAffineScope(op);
+    if (!scope)
+      return rewriter.notifyMatchFailure(op, "no enclosing affine scope");
+
+    Value lhs = getRaisableIndexOperand(op.getLhs(), op, scope);
+    if (!lhs) {
+      return rewriter.notifyMatchFailure(
+          op, "lhs is not raisable to an affine dim/symbol");
+    }
+    Value rhs = getRaisableIndexOperand(op.getRhs(), op, scope);
+    if (!rhs) {
+      return rewriter.notifyMatchFailure(
+          op, "rhs is not raisable to an affine dim/symbol");
+    }
+
+    SmallVector<Value> dimOperands, symOperands;
+    SmallVector<AffineExpr> exprs;
+    for (Value operand : {lhs, rhs}) {
+      Value v = materializeIndexOperand(operand, op, rewriter);
+      if (affine::isValidSymbol(v, scope)) {
+        exprs.push_back(rewriter.getAffineSymbolExpr(symOperands.size()));
+        symOperands.push_back(v);
+      } else {
+        assert(affine::isValidDim(v, scope) &&
+               "getRaisableIndexOperand accepted an illegal affine operand");
+        exprs.push_back(rewriter.getAffineDimExpr(dimOperands.size()));
+        dimOperands.push_back(v);
+      }
+    }
+
+    AffineMap map = AffineMap::get(dimOperands.size(), symOperands.size(),
+                                   exprs, rewriter.getContext());
+    SmallVector<Value> operands = dimOperands;
+    llvm::append_range(operands, symOperands);
+
+    Value raised = AffineOp::create(rewriter, op.getLoc(), map, operands);
+
+    Type origType = op.getResult().getType();
+    if (!origType.isIndex())
+      raised =
+          arith::IndexCastOp::create(rewriter, op.getLoc(), origType, raised);
+
+    rewriter.replaceOp(op, raised);
+    return success();
+  }
+};
+
+//===----------------------------------------------------------------------===//
 // Pass implementation
 //===----------------------------------------------------------------------===//
 
@@ -374,7 +581,8 @@ void SCFToAffinePass::runOnOperation() {
   RewritePatternSet patterns(&ctx);
   populateSCFToAffineConversionPatterns(patterns);
 
-  (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+  if (failed(applyPatternsGreedily(getOperation(), std::move(patterns))))
+    signalPassFailure();
 }
 
 } // namespace
@@ -384,5 +592,8 @@ void SCFToAffinePass::runOnOperation() {
 //===----------------------------------------------------------------------===//
 
 void mlir::populateSCFToAffineConversionPatterns(RewritePatternSet &patterns) {
+  patterns.add<MinMaxOpRewrite<arith::MaxSIOp, affine::AffineMaxOp>,
+               MinMaxOpRewrite<arith::MinSIOp, affine::AffineMinOp>>(
+      patterns.getContext());
   patterns.add<ForOpRewrite>(patterns.getContext());
 }

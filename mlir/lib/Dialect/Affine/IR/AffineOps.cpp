@@ -427,9 +427,7 @@ bool mlir::affine::isValidSymbol(Value value) {
   return false;
 }
 
-/// A utility function to check if a value is defined at the top level of
-/// `region` or is an argument of `region` or is defined above the region.
-static bool isTopLevelValueOrAbove(Value value, Region *region) {
+bool mlir::affine::isTopLevelValueOrAbove(Value value, Region *region) {
   Region *parentRegion = value.getParentRegion();
   do {
     if (parentRegion == region)
