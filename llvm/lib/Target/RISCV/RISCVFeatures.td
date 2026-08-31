@@ -2195,3 +2195,5 @@ def TuneSiFive7 : SubtargetFeature<"sifive7", "RISCVProcFamily", "SiFive7",
 def TuneVentanaVeyron : SubtargetFeature<"ventana-veyron", "RISCVProcFamily", "VentanaVeyron",
                                          "Ventana Veyron-Series processors",
                                          [], InlineIgnore>;
+
+include "RISCVFeaturesXQV.td"
