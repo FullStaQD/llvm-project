@@ -12,7 +12,7 @@
 
 // QV.SINGLE vs1, rs2, Block_imm
 class QVSingleIntrinsic : Intrinsic<[], // void return type
-                     [llvm_anyvector_ty, // vs1 (tgt)
+                     [llvm_anyvector_ty, // vs1 (qubits)
                       llvm_anyint_ty,    // rs2 (tag)
                       llvm_anyint_ty,    // Block_imm (wait time)
                       llvm_anyint_ty],   // vl
@@ -20,8 +20,8 @@ class QVSingleIntrinsic : Intrinsic<[], // void return type
     
 // QV.Pair vs1, vs2, Block_imm
 class QVPairIntrinsic : Intrinsic<[],
-                     [llvm_anyvector_ty, // vs1 (tgt)
-                      llvm_anyvector_ty, // vs2 (src)
+                     [llvm_anyvector_ty, // vs1
+                      llvm_anyvector_ty, // vs2
                       llvm_anyint_ty,    // Block_imm (wait time)
                       llvm_anyint_ty],   // vl
                      [IntrHasSideEffects, IntrNoMem]>;

@@ -20,8 +20,9 @@ entry:
   %ctrl = load <vscale x 8 x i8>, ptr @ctrl_qubits, align 8
   %tgt  = load <vscale x 8 x i8>, ptr @tgt_qubits, align 8
 
-  call void @llvm.riscv.qv.h.nxv8i8.i32.i32.i32(<vscale x 8 x i8> %tgt, i32 85, i32 12, i32 2)
-  call void @llvm.riscv.qv.cx.nxv8i8.nxv8i8.i32.i32(<vscale x 8 x i8> %tgt, <vscale x 8 x i8> %ctrl, i32 12, i32 4)
+  call void @llvm.riscv.qv.h.nxv8i8.i32.i32.i32(<vscale x 8 x i8> %ctrl, i32 85, i32 12, i32 4)
+  call void @llvm.riscv.qv.cx.nxv8i8.nxv8i8.i32.i32(<vscale x 8 x i8> %ctrl, <vscale x 8 x i8> %tgt, i32 12, i32 4)
+  call void @llvm.riscv.qv.mz.nxv8i8.i32.i32.i32(<vscale x 8 x i8> %ctrl, i32 85, i32 12, i32 4)
   call void @llvm.riscv.qv.mz.nxv8i8.i32.i32.i32(<vscale x 8 x i8> %tgt, i32 85, i32 12, i32 4)
 
 ; TODO: output recording, e.g. via __quantum__rt__bool_record_output .
@@ -38,14 +39,13 @@ attributes #0 = { "target-features"="+experimental-xqv" }
 ; CHECK-NEXT:    addi [[A0]], [[A0]], %lo(ctrl_qubits)
 ; CHECK-NEXT:    lui [[A1:a[0-9]+]], %hi(tgt_qubits)
 ; CHECK-NEXT:    addi [[A1]], [[A1]], %lo(tgt_qubits)
-; CHECK-NEXT:    vl1r.v [[V8:v[0-9]+]], ([[A1]])
-; CHECK-NEXT:    li [[A1]], 2
-; CHECK-NEXT:    vl1r.v [[V9:v[0-9]+]], ([[A0]])
-; CHECK-NEXT:    li [[A0]], 85
-; CHECK-NEXT:    vsetvli zero, [[A1]], e8, m1, ta, ma
-; CHECK-NEXT:    qv.h [[V8]], [[A0]], 12
-; CHECK-NEXT:    li [[A1]], 4
-; CHECK-NEXT:    vsetvli zero, [[A1]], e8, m1, ta, ma
-; CHECK-NEXT:    qv.cx [[V8]], [[V9]], 12
-; CHECK-NEXT:    qv.mz [[V8]], [[A0]], 12
+; CHECK-NEXT:    vl1r.v [[VCTRL:v[0-9]+]], ([[A0]])
+; CHECK-NEXT:    vl1r.v [[VTGT:v[0-9]+]], ([[A1]])
+; CHECK-NEXT:    li [[A0]], 4
+; CHECK-NEXT:    li [[A1]], 85
+; CHECK-NEXT:    vsetvli zero, [[A0]], e8, m1, ta, ma
+; CHECK-NEXT:    qv.h [[VCTRL]], [[A1]], 12
+; CHECK-NEXT:    qv.cx [[VCTRL]], [[VTGT]], 12
+; CHECK-NEXT:    qv.mz [[VCTRL]], [[A1]], 12
+; CHECK-NEXT:    qv.mz [[VTGT]], [[A1]], 12
 ; CHECK-NEXT:    ret
