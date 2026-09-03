@@ -35,17 +35,16 @@ attributes #0 = { "target-features"="+experimental-xqv" }
 
 ; CHECK-LABEL: load_vectors:
 ; CHECK:       # %bb.0: # %entry
-; CHECK-NEXT:    lui [[A0:a[0-9]+]], %hi(ctrl_qubits)
-; CHECK-NEXT:    addi [[A0]], [[A0]], %lo(ctrl_qubits)
-; CHECK-NEXT:    lui [[A1:a[0-9]+]], %hi(tgt_qubits)
-; CHECK-NEXT:    addi [[A1]], [[A1]], %lo(tgt_qubits)
-; CHECK-NEXT:    vl1r.v [[VCTRL:v[0-9]+]], ([[A0]])
-; CHECK-NEXT:    vl1r.v [[VTGT:v[0-9]+]], ([[A1]])
-; CHECK-NEXT:    li [[A0]], 4
-; CHECK-NEXT:    li [[A1]], 85
-; CHECK-NEXT:    vsetvli zero, [[A0]], e8, m1, ta, ma
-; CHECK-NEXT:    qv.h [[VCTRL]], [[A1]], 12
+; CHECK-NEXT:    lui [[CTRL:a[0-9]+]], %hi(ctrl_qubits)
+; CHECK-NEXT:    addi [[CTRL]], [[CTRL]], %lo(ctrl_qubits)
+; CHECK-NEXT:    vl1r.v [[VCTRL:v[0-9]+]], ([[CTRL]])
+; CHECK-NEXT:    lui [[TGT:a[0-9]+]], %hi(tgt_qubits)
+; CHECK-NEXT:    addi [[TGT]], [[TGT]], %lo(tgt_qubits)
+; CHECK-NEXT:    vl1r.v [[VTGT:v[0-9]+]], ([[TGT]])
+; CHECK-NEXT:    li [[RS2:a[0-9]+]], 85
+; CHECK-NEXT:    vsetivli zero, 4, e8, m1, ta, ma
+; CHECK-NEXT:    qv.h [[VCTRL]], [[RS2]], 12
 ; CHECK-NEXT:    qv.cx [[VCTRL]], [[VTGT]], 12
-; CHECK-NEXT:    qv.mz [[VCTRL]], [[A1]], 12
-; CHECK-NEXT:    qv.mz [[VTGT]], [[A1]], 12
+; CHECK-NEXT:    qv.mz [[VCTRL]], [[RS2]], 12
+; CHECK-NEXT:    qv.mz [[VTGT]], [[RS2]], 12
 ; CHECK-NEXT:    ret

@@ -46,13 +46,13 @@ multiclass RVPseudoQVPair {
   }
 }
 
-// Patterns to match the intrinsics to the Pseudos
+// Patterns to match the intrinsics to the Pseudos.
 multiclass RVPatQVSingle<string intrinsic, string inst> {
   foreach vti = SupportedQVVTypes in {
     let Predicates = GetVTypeMinimalPredicates<vti>.Predicates in {
       def : Pat<(!cast<Intrinsic>(intrinsic) (vti.Vector vti.RegClass:$vs1),
                                              (XLenVT GPR:$rs2), 
-                                             (XLenVT uimm5:$block_imm), (XLenVT GPR:$vl)),
+                                             (XLenVT uimm5:$block_imm), VLOpFrag),
                 (!cast<Instruction>(inst#"_"#vti.LMul.MX) vti.RegClass:$vs1,
                                                           GPR:$rs2, uimm5:$block_imm,
                                                           GPR:$vl, vti.Log2SEW)>;
@@ -64,7 +64,7 @@ multiclass RVPatQVPair<string intrinsic, string inst> {
   foreach vti = SupportedQVVTypes in {
     def : Pat<(!cast<Intrinsic>(intrinsic) (vti.Vector vti.RegClass:$vs1),
                                            (vti.Vector vti.RegClass:$vs2),
-                                           (XLenVT uimm5:$block_imm), (XLenVT GPR:$vl)),
+                                           (XLenVT uimm5:$block_imm), VLOpFrag),
               (!cast<Instruction>(inst#"_"#vti.LMul.MX) vti.RegClass:$vs1,
                                                         vti.RegClass:$vs2,
                                                         uimm5:$block_imm,
