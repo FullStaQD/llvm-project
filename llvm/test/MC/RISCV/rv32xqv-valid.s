@@ -26,7 +26,7 @@ qv.x v8, a0, 12
 # CHECK-ENCODING: [0x0b,0x06,0xa4,0xd0]
 qv.mz v8, a0, 12
 
-# qv.cx: two-qubit CNOT — qv.cx vs1(tgt), vs2(ctrl), block_imm
+# qv.cx: two-qubit CNOT — qv.cx vs1(ctrl), vs2(tgt), block_imm
 # gateid=0b1100110, funct3=0b001
 
 # CHECK-INST:     qv.cx v8, v9, 12
