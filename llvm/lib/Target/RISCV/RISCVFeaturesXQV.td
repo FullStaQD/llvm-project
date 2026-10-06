@@ -12,7 +12,7 @@
 
 def FeatureVendorXQV
     : RISCVExperimentalExtension<0, 1, "QV Quantum Extension (HiSEP-Q 2.0)",
-                                [FeatureStdExtV]>;
+                                [FeatureStdExtZve32x]>;
 
 def HasVendorXQV
     : Predicate<"Subtarget->hasVendorXQV()">,
