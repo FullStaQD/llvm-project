@@ -84,3 +84,10 @@ foreach g = QVPairGates in {
   defm : RVPatQVPair<g.IntrinsicRecord, "PseudoQV_" # g.Suffix>;
 }
 }
+
+// Read-only CSR holding the outcome of the latest measurement.
+let FeaturesRequired = [{ {RISCV::FeatureVendorXQV} }] in
+def SysRegQVMRES : SysReg<"qv.mres", 0xCC0>;
+
+let Predicates = [HasVendorXQV] in
+def : Pat<(XLenVT (int_riscv_qv_mres)), (CSRRS SysRegQVMRES.Encoding, (XLenVT X0))>;

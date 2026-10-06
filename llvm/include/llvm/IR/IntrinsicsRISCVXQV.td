@@ -33,4 +33,8 @@ let TargetPrefix = "riscv" in {
     def int_riscv_qv_mz : QVSingleIntrinsic;
 
     def int_riscv_qv_cx : QVPairIntrinsic;
+
+    // Reads CSR qv.mres: bit k is the outcome of element k of the latest qv.mz.
+    def int_riscv_qv_mres : Intrinsic<[llvm_anyint_ty], [],
+                                      [IntrHasSideEffects, IntrNoMem]>;
 }

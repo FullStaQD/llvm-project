@@ -32,3 +32,13 @@ qv.mz v8, a0, 12
 # CHECK-INST:     qv.cx v8, v9, 12
 # CHECK-ENCODING: [0x0b,0x16,0x94,0xcc]
 qv.cx v8, v9, 12
+
+# qv.mres: read-only CSR 0xCC0 holding the outcome of the latest qv.mz
+
+# CHECK-INST:     csrr a0, qv.mres
+# CHECK-ENCODING: [0x73,0x25,0x00,0xcc]
+csrr a0, qv.mres
+
+# CHECK-INST:     csrr a0, qv.mres
+# CHECK-ENCODING: [0x73,0x25,0x00,0xcc]
+csrr a0, 0xcc0
