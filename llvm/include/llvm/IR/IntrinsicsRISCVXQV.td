@@ -33,4 +33,14 @@ let TargetPrefix = "riscv" in {
     def int_riscv_qv_mz : QVSingleIntrinsic;
 
     def int_riscv_qv_cx : QVPairIntrinsic;
+
+    // Reads CSR qv.mres: bit k is the outcome of element k of the latest qv.mz.
+    // TODO: The hardware stores the outcomes of a measurement in qv.mres, a
+    // single 32-bit register. A qv.mz with VL > 32 still measures all elements,
+    // but the outcomes of elements 32 and up are silently dropped (HiSEP-Q
+    // plans to trap instead). This is a workaround on their side for now. For
+    // QCC this means we have to be careful: our workaround likely has to check
+    // for a static VL <= 32 when measuring.
+    def int_riscv_qv_mres : Intrinsic<[llvm_anyint_ty], [],
+                                      [IntrHasSideEffects, IntrNoMem]>;
 }

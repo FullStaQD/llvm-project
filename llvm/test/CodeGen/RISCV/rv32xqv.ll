@@ -48,3 +48,28 @@ attributes #0 = { "target-features"="+experimental-xqv" }
 ; CHECK-NEXT:    qv.mz [[VCTRL]], [[RS2]], 12
 ; CHECK-NEXT:    qv.mz [[VTGT]], [[RS2]], 12
 ; CHECK-NEXT:    ret
+
+; Each read of qv.mres stays right after its own measurement.
+declare i32 @llvm.riscv.qv.mres.i32()
+
+define i32 @read_measurements(<vscale x 8 x i8> %qubits) #0 {
+entry:
+  call void @llvm.riscv.qv.mz.nxv8i8.i32.i32.i32(<vscale x 8 x i8> %qubits, i32 0, i32 0, i32 4)
+  %first = call i32 @llvm.riscv.qv.mres.i32()
+  call void @llvm.riscv.qv.h.nxv8i8.i32.i32.i32(<vscale x 8 x i8> %qubits, i32 0, i32 0, i32 4)
+  call void @llvm.riscv.qv.mz.nxv8i8.i32.i32.i32(<vscale x 8 x i8> %qubits, i32 0, i32 0, i32 4)
+  %second = call i32 @llvm.riscv.qv.mres.i32()
+  %both = xor i32 %first, %second
+  ret i32 %both
+}
+
+; CHECK-LABEL: read_measurements:
+; CHECK:       # %bb.0: # %entry
+; CHECK-NEXT:    vsetivli zero, 4, e8, m1, ta, ma
+; CHECK-NEXT:    qv.mz v8, zero, 0
+; CHECK-NEXT:    csrr [[FIRST:a[0-9]+]], qv.mres
+; CHECK-NEXT:    qv.h v8, zero, 0
+; CHECK-NEXT:    qv.mz v8, zero, 0
+; CHECK-NEXT:    csrr [[SECOND:a[0-9]+]], qv.mres
+; CHECK-NEXT:    xor a0, [[FIRST]], [[SECOND]]
+; CHECK-NEXT:    ret
